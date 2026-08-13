@@ -136,6 +136,17 @@
     </footer>
   </div>
 
+  <!-- MODAL SEARCH PUBLIC -->
+  <div id="publicSearchModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative border border-slate-200">
+      <button onclick="closePublicModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i data-feather="x" class="w-5 h-5"></i>
+      </button>
+      <h3 id="searchQueryTitle" class="text-base font-bold text-slate-800 mb-4 border-b pb-2">Hasil Pencarian</h3>
+      <div id="searchResultsList" class="space-y-2 max-h-60 overflow-y-auto"></div>
+    </div>
+  </div>
+
   <!-- MODAL LOGIN -->
   <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative border border-slate-200">
@@ -1146,6 +1157,224 @@
       renderConfirmTopicsTable();
     }
 
+    // MANAJEMEN MASTER REPOSITORI JUDUL
+    async function addRepository(e) {
+      e.preventDefault();
+      const input = document.getElementById('newRepoTitle');
+      const titleVal = input.value.trim();
+
+      if (titleVal) {
+        const docId = Date.now().toString();
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "repositories", docId), { title: titleVal });
+        input.value = '';
+        Swal.fire({ icon: 'success', title: 'Judul Berhasil Ditambahkan!', timer: 1200, showConfirmButton: false });
+      }
+    }
+
+    async function removeRepository(docId) {
+      try {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "repositories", docId));
+        Swal.fire({ icon: 'success', title: 'Judul Dihapus!', timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+      }
+    }
+
+    async function clearAllRepositories() {
+      const confirm = await Swal.fire({
+        title: 'Hapus Semua Master Judul?',
+        text: `Terdapat ${repositories.length} judul di repositori yang akan dibersihkan!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Semua!'
+      });
+
+      if (confirm.isConfirmed) {
+        Swal.fire({
+          title: 'Membersihkan Repositori...',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+          let batch = window.fbWriteBatch(window.firebaseDb);
+          let counter = 0;
+
+          for (let repo of repositories) {
+            batch.delete(window.fbDoc(window.firebaseDb, "repositories", repo.id));
+            counter++;
+
+            if (counter === 450) {
+              await batch.commit();
+              batch = window.fbWriteBatch(window.firebaseDb);
+              counter = 0;
+            }
+          }
+
+          if (counter > 0) {
+            await batch.commit();
+          }
+
+          Swal.fire({ icon: 'success', title: 'Master Repositori Berhasil Dibersihkan!' });
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+        }
+      }
+    }
+
+    // BULK UPLOAD JUDUL MENGGUNAKAN CSV
+    async function handleBulkUploadRepositories() {
+      const fileInput = document.getElementById('csvRepoInput');
+      if (!fileInput.files.length) {
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV repositori judul terlebih dahulu.' });
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        if (lines.length < 1) {
+          Swal.fire({ icon: 'error', title: 'File Kosong', text: 'File CSV tidak berisi data.' });
+          return;
+        }
+
+        // Cek header baris
+        let startIdx = 0;
+        if (lines[0].toLowerCase().includes('judul') || lines[0].toLowerCase().includes('title')) {
+          startIdx = 1;
+        }
+
+        const totalItems = lines.length - startIdx;
+
+        Swal.fire({
+          title: 'Sedang Mengunggah Judul...',
+          html: `Memproses <b>0</b> dari <b>${totalItems}</b> judul...`,
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        let batch = window.fbWriteBatch(window.firebaseDb);
+        let counter = 0;
+        let successCount = 0;
+
+        for (let i = startIdx; i < lines.length; i++) {
+          const rawTitle = lines[i].replace(/^["']|["']$/g, '').trim();
+          if (rawTitle) {
+            const docId = (Date.now() + i).toString();
+            const docRef = window.fbDoc(window.firebaseDb, "repositories", docId);
+            batch.set(docRef, { title: rawTitle });
+
+            counter++;
+            successCount++;
+
+            if (counter === 450) {
+              await batch.commit();
+              batch = window.fbWriteBatch(window.firebaseDb);
+              counter = 0;
+            }
+          }
+
+          Swal.update({
+            html: `Memproses <b>${successCount}</b> dari <b>${totalItems}</b> judul...`
+          });
+        }
+
+        if (counter > 0) {
+          await batch.commit();
+        }
+
+        Swal.fire({ icon: 'success', title: 'Bulk Upload Repositori Selesai!', text: `Berhasil menambahkan ${successCount} judul baru.` });
+        fileInput.value = '';
+      };
+
+      reader.readAsText(file);
+    }
+
+    function renderRepositories() {
+      const list = document.getElementById('repoList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      if (repositories.length === 0) {
+        list.innerHTML = `<li class="py-4 text-center text-slate-400">Belum ada judul di repositori.</li>`;
+        return;
+      }
+
+      const searchKeyword = (document.getElementById('repoSearch')?.value || '').toLowerCase().trim();
+      const filtered = repositories.filter(r => r.title.toLowerCase().includes(searchKeyword));
+
+      filtered.forEach(repo => {
+        list.innerHTML += `
+          <li class="py-3 px-2 flex justify-between items-center hover:bg-slate-50 transition">
+            <span class="text-xs font-medium text-slate-800">${repo.title}</span>
+            <button onclick="removeRepository('${repo.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-semibold shrink-0 ml-4">Hapus</button>
+          </li>
+        `;
+      });
+    }
+
+    function filterRepository() {
+      renderRepositories();
+    }
+
+    // BULK UPLOAD DOSEN MENGGUNAKAN CSV
+    async function handleBulkUploadLecturers() {
+      const fileInput = document.getElementById('csvLecturerInput');
+      if (!fileInput.files.length) {
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV dosen terlebih dahulu.' });
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        let startIdx = 0;
+        if (lines[0].toLowerCase().includes('dosen') || lines[0].toLowerCase().includes('nama')) {
+          startIdx = 1;
+        }
+
+        let batch = window.fbWriteBatch(window.firebaseDb);
+        let counter = 0;
+        let successCount = 0;
+
+        for (let i = startIdx; i < lines.length; i++) {
+          const rawName = lines[i].replace(/^["']|["']$/g, '').trim();
+          if (rawName) {
+            const docId = (Date.now() + i).toString();
+            const docRef = window.fbDoc(window.firebaseDb, "lecturers", docId);
+            batch.set(docRef, { name: rawName });
+
+            counter++;
+            successCount++;
+
+            if (counter === 450) {
+              await batch.commit();
+              batch = window.fbWriteBatch(window.firebaseDb);
+              counter = 0;
+            }
+          }
+        }
+
+        if (counter > 0) {
+          await batch.commit();
+        }
+
+        Swal.fire({ icon: 'success', title: 'Bulk Upload Dosen Selesai!', text: `Berhasil menambahkan ${successCount} dosen baru.` });
+        fileInput.value = '';
+      };
+
+      reader.readAsText(file);
+    }
+
     // KELOLA TEMA (SUPERADMIN)
     async function addTopic(e) {
       e.preventDefault();
@@ -1407,7 +1636,7 @@
       });
     }
 
-    // FUNGSI UTAMA PENANGANAN RACE CONDITION MENGGUNAKAN FIRESTORE TRANSACTION
+    // FUNGSI PENANGANAN RACE CONDITION DENGAN TRANSACTION
     async function handleSaveTopicAndDosen() {
       const topicVal = document.getElementById('userTopicDropdown').value;
       const paVal = document.getElementById('userPADropdown').value;
@@ -1423,7 +1652,6 @@
 
       try {
         await window.fbRunTransaction(window.firebaseDb, async (transaction) => {
-          // 1. Ambil snapshot data Master Tema terkini dari server
           const topicRef = window.fbDoc(window.firebaseDb, "topics", topicVal);
           const topicDoc = await transaction.get(topicRef);
 
@@ -1435,7 +1663,6 @@
           const maxQuota = topicData.maxQuota || 10;
           const topicLecturers = topicData.topicLecturers || [];
 
-          // 2. Ambil snapshot seluruh data mahasiswa
           const studentsColRef = window.fbCollection(window.firebaseDb, "students");
           const studentsSnap = await window.fbGetDocs(studentsColRef);
 
@@ -1452,12 +1679,10 @@
             }
           });
 
-          // 3. Cek apakah Kuota Tema Total Penuh
           if (currentTopicCount >= maxQuota) {
             throw `Maaf, kuota total untuk tema "${topicVal}" baru saja Penuh! Silakan pilih tema lain.`;
           }
 
-          // 4. Cek apakah Kuota Dosen Pilihan Penuh
           const targetLecturerObj = topicLecturers.find(l => l.name === paVal);
           if (!targetLecturerObj) {
             throw "Dosen tidak terdaftar di tema ini!";
@@ -1467,7 +1692,6 @@
             throw `Maaf, kuota pembimbing untuk ${paVal} pada tema "${topicVal}" baru saja Penuh! Silakan pilih dosen lain.`;
           }
 
-          // 5. Jika SEMUA KUOTA AMAN -> Jalankan Transaksi Penulisan
           const userRef = window.fbDoc(window.firebaseDb, "students", currentUser.uid);
           transaction.set(userRef, {
             selectedTopic: topicVal,
@@ -1476,7 +1700,6 @@
           }, { merge: true });
         });
 
-        // Apabila sukses lewat dari Transaction
         studentProfile.selectedTopic = topicVal;
         studentProfile.selectedPA = paVal;
         studentProfile.topicStatus = 'PENDING';
