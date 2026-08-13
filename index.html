@@ -1,0 +1,1828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMARTA - Sistem Informasi Manajemen Tugas Akhir</title>
+  
+  <!-- Tailwind CSS Framework -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Feather Icons -->
+  <script src="https://unpkg.com/feather-icons"></script>
+  <!-- html2pdf.js for PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- SweetAlert2 CSS & JS -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Firebase SDK (Modular v10) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      createUserWithEmailAndPassword, 
+      sendPasswordResetEmail, 
+      signOut, 
+      onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+      getFirestore, 
+      collection, 
+      doc, 
+      setDoc, 
+      getDoc, 
+      getDocs, 
+      updateDoc, 
+      deleteDoc, 
+      onSnapshot,
+      writeBatch
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Konfigurasi Firebase Anda
+    const firebaseConfig = {
+      apiKey: "AIzaSyB68qGFQwSsGNWuJGJSLNrwobcvHlEf-Xk",
+      authDomain: "db-simarta.firebaseapp.com",
+      databaseURL: "https://db-simarta-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "db-simarta",
+      storageBucket: "db-simarta.firebasestorage.app",
+      messagingSenderId: "511001481969",
+      appId: "1:511001481969:web:72ec842673cfd67085cf50"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Ekspose ke global scope
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.fbSignIn = signInWithEmailAndPassword;
+    window.fbCreateUser = createUserWithEmailAndPassword;
+    window.fbResetPassword = sendPasswordResetEmail;
+    window.fbSignOut = signOut;
+    window.fbOnAuthStateChanged = onAuthStateChanged;
+    window.fbCollection = collection;
+    window.fbDoc = doc;
+    window.fbSetDoc = setDoc;
+    window.fbGetDoc = getDoc;
+    window.fbGetDocs = getDocs;
+    window.fbUpdateDoc = updateDoc;
+    window.fbDeleteDoc = deleteDoc;
+    window.fbOnSnapshot = onSnapshot;
+    window.fbWriteBatch = writeBatch;
+  </script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#e6f7f5', 100: '#cceee9', 200: '#99ddd3', 300: '#66ccbd',
+              400: '#33bbb1', 500: '#00A99D', 600: '#00877e', 700: '#00665f',
+            },
+            kemenkesYellow: {
+              100: '#fff9db', 400: '#ffdb4d', 500: '#FFCC00', 600: '#e6b800', 700: '#b38f00',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- LANDING PAGE -->
+  <div id="view-landing" class="min-h-screen flex flex-col justify-between bg-gradient-to-b from-brand-50 via-white to-brand-50 text-slate-800">
+    <header class="max-w-7xl w-full mx-auto px-6 py-6 flex items-center justify-between border-b border-brand-100">
+      <div class="flex items-center gap-3">
+        <div class="bg-brand-500 p-2 rounded-xl text-white shadow-md">
+          <i data-feather="shield-check"></i>
+        </div>
+        <span class="font-bold text-xl tracking-tight text-brand-700">SIMARTA</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="openLoginModal()" class="bg-kemenkesYellow-500 hover:bg-kemenkesYellow-400 text-brand-700 text-sm font-bold px-5 py-2 rounded-lg shadow-md transition">
+          Login SIMARTA
+        </button>
+      </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-6 text-center my-auto py-10">
+      <span class="bg-brand-100 text-brand-700 border border-brand-200 text-xs px-3 py-1 rounded-full font-medium inline-block mb-4">
+        Platform Digital Pengelolaan Tugas Akhir Kebidanan
+      </span>
+      <h1 class="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight text-brand-700">
+        SIMARTA (Sistem Informasi Manajemen Tugas Akhir)
+      </h1>
+      <p class="mt-4 text-slate-600 text-base md:text-lg max-w-2xl mx-auto">
+        Platform terintegrasi berbasis cloud untuk pengajuan tema, persetujuan admin, pengecekan kemiripan judul, dan monitoring skripsi mahasiswa.
+      </p>
+
+      <div class="mt-8 max-w-2xl mx-auto">
+        <form onsubmit="handlePublicSearch(event)" class="relative flex items-center">
+          <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+            <i data-feather="search" class="w-5 h-5"></i>
+          </div>
+          <input type="text" id="publicSearchInput" required placeholder="Cari ide atau cek potensi duplikasi judul skripsi..." class="w-full pl-11 pr-32 py-4 rounded-2xl bg-white border border-brand-200 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 shadow-lg transition">
+          <button type="submit" class="absolute right-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition shadow-md flex items-center gap-1.5">
+            <span>Cari Judul</span>
+          </button>
+        </form>
+      </div>
+    </main>
+
+    <footer class="text-center py-6 text-xs text-slate-500 border-t border-brand-100">
+      &copy; 2026 SIMARTA - Akademik
+    </footer>
+  </div>
+
+  <!-- MODAL LOGIN -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative border border-slate-200">
+      <button onclick="closeLoginModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i data-feather="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="bg-brand-500 text-white w-12 h-12 rounded-2xl mx-auto flex items-center justify-center shadow-md mb-2">
+          <i data-feather="lock"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-800">Login Akun SIMARTA</h3>
+        <p class="text-xs text-slate-500 mt-1">Masukkan Email dan Password Firebase Anda.</p>
+      </div>
+
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email</label>
+          <input type="email" id="loginEmail" required placeholder="email@mahasiswa.ac.id" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+          <input type="password" id="loginPassword" required placeholder="Password Akun" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+        </div>
+        <button type="submit" id="btnLoginSubmit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-xl text-sm transition shadow-md flex items-center justify-center gap-2">
+          <span>Masuk Sekarang</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- APPLICATION DASHBOARD -->
+  <div id="view-app" class="flex min-h-screen hidden">
+    
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-white border-r border-slate-200 text-slate-700 flex flex-col justify-between p-4 hidden md:flex">
+      <div>
+        <div class="flex items-center gap-3 px-2 py-4 border-b border-slate-100">
+          <div class="bg-brand-500 p-2 rounded-xl text-white shadow-sm">
+            <i data-feather="shield-check"></i>
+          </div>
+          <div>
+            <h1 class="font-bold text-brand-700 text-base leading-tight">SIMARTA</h1>
+            <p class="text-xs text-slate-500">Sistem Informasi Manajemen Tugas Akhir</p>
+          </div>
+        </div>
+
+        <div class="mt-4 px-2">
+          <label class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Peran Terhubung:</label>
+          <div id="roleDisplayBadge" class="mt-1 w-full bg-brand-50 text-brand-700 text-xs font-bold rounded-lg p-2 border border-brand-200 text-center">
+            Mahasiswa
+          </div>
+        </div>
+
+        <!-- NAV SUPERADMIN -->
+        <nav id="navSuperadmin" class="mt-6 space-y-1 hidden">
+          <button onclick="switchPage('page-dashboard-admin')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 bg-brand-500 text-white rounded-lg font-medium text-sm transition shadow-sm">
+            <i data-feather="layout" class="w-4 h-4"></i> Verifikasi Judul
+          </button>
+          <button onclick="switchPage('page-manage-users')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="user-plus" class="w-4 h-4"></i> Pembuatan User & Sandi
+          </button>
+          <button onclick="switchPage('page-confirm-topics')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="check-square" class="w-4 h-4"></i> Konfirmasi Tema Mhs
+          </button>
+          <button onclick="switchPage('page-manage-topics')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="layers" class="w-4 h-4"></i> Kelola Tema Skripsi
+          </button>
+          <button onclick="switchPage('page-manage-lecturers')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="user-check" class="w-4 h-4"></i> Master Data Dosen
+          </button>
+          <button onclick="switchPage('page-assign-advisors')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="users" class="w-4 h-4"></i> Ploting Pembimbing TA
+          </button>
+          <button onclick="switchPage('page-similarity-check')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="search" class="w-4 h-4"></i> Live Similarity Check
+          </button>
+          <button onclick="switchPage('page-repository')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="database" class="w-4 h-4"></i> Master Repositori
+          </button>
+        </nav>
+
+        <!-- NAV USER / MAHASISWA -->
+        <nav id="navUser" class="mt-6 space-y-1">
+          <button onclick="switchPage('page-dashboard-user')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 bg-brand-500 text-white rounded-lg font-medium text-sm transition shadow-sm">
+            <i data-feather="home" class="w-4 h-4"></i> Dashboard Saya
+          </button>
+          <button onclick="switchPage('page-select-topic')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
+            <i data-feather="check-square" class="w-4 h-4"></i> Pilih Tema & Dosen Tema
+          </button>
+          <!-- AJUKAN JUDUL (DISABLED) -->
+          <button disabled class="w-full flex items-center justify-between px-3 py-2.5 text-slate-400 bg-slate-100 rounded-lg font-medium text-sm cursor-not-allowed opacity-60" title="Fitur belum dibuka">
+            <div class="flex items-center gap-3">
+              <i data-feather="file-plus" class="w-4 h-4"></i> Ajukan Judul Baru
+            </div>
+            <i data-feather="lock" class="w-3.5 h-3.5"></i>
+          </button>
+        </nav>
+      </div>
+
+      <div class="border-t border-slate-100 pt-4 flex items-center justify-between px-2">
+        <div class="flex items-center gap-3">
+          <div id="userAvatar" class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-xs border border-brand-200">MHS</div>
+          <div>
+            <p id="userName" class="text-xs font-semibold text-slate-800">Mahasiswa</p>
+            <p id="userRoleBadge" class="text-[10px] text-brand-600 font-medium">User</p>
+          </div>
+        </div>
+        <button onclick="logout()" title="Logout" class="text-slate-400 hover:text-rose-500 transition">
+          <i data-feather="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Dashboard Utama</h2>
+        <button onclick="logout()" class="md:hidden text-xs bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600">Logout</button>
+      </header>
+
+      <div class="p-6 max-w-7xl mx-auto w-full">
+
+        <!-- DASHBOARD SUPERADMIN: VERIFIKASI JUDUL -->
+        <section id="page-dashboard-admin" class="page-view space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <h3 class="text-lg font-bold text-slate-800">Verifikasi & Approval Pengajuan Judul</h3>
+            <button onclick="exportToExcel()" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-2 shadow">
+              <i data-feather="file-text" class="w-4 h-4"></i> Export Rekap Data (CSV)
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
+                    <th class="py-3.5 px-4">Mahasiswa</th>
+                    <th class="py-3.5 px-4">Tema & Dosen PA</th>
+                    <th class="py-3.5 px-4">Judul Skripsi</th>
+                    <th class="py-3.5 px-4 text-center">% Kemiripan</th>
+                    <th class="py-3.5 px-4 text-center">Status Validasi</th>
+                    <th class="py-3.5 px-4">Catatan / Alasan</th>
+                    <th class="py-3.5 px-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="submissionTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUPERADMIN: PEMBUATAN USER & LUPA PASSWORD + BULK UPLOAD CSV + DAFTAR USER -->
+        <section id="page-manage-users" class="page-view space-y-6 hidden">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Manajemen Akun Mahasiswa (Pembuatan & Reset Password)</h3>
+            <p class="text-xs text-slate-500">Superadmin dapat membuat akun baru untuk setiap mahasiswa secara satuan maupun massal via CSV serta mengelola/menghapus akun terdaftar.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Form Satuan -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+              <h4 class="text-sm font-bold text-slate-800 mb-4">Buat Akun Mahasiswa Baru</h4>
+              <form onsubmit="handleCreateUser(event)" class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nama Lengkap Mahasiswa</label>
+                  <input type="text" id="newStudentName" required placeholder="Contoh: Siska Amelia" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">NIM (Nomor Induk Mahasiswa)</label>
+                  <input type="text" id="newStudentNIM" required placeholder="Contoh: P17321231001" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Mahasiswa (Untuk Login Firebase)</label>
+                  <input type="email" id="newStudentEmail" required placeholder="mahasiswa@simarta.ac.id" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Password Sementara</label>
+                  <input type="password" id="newStudentPassword" required placeholder="Minimal 6 karakter" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2.5 rounded-lg text-sm transition">Daftarkan Akun Mahasiswa</button>
+              </form>
+            </div>
+
+            <!-- Form Bulk Upload CSV -->
+            <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
+              <div>
+                <h4 class="text-sm font-bold text-slate-800 mb-2">Bulk Upload Mahasiswa (CSV)</h4>
+                <p class="text-xs text-slate-500 mb-4">Format kolom baris CSV: <br><code class="bg-slate-100 p-1 rounded text-brand-700 font-mono">nama,nim,email,password</code></p>
+                <input type="file" id="csvFileInput" accept=".csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 border border-slate-200 rounded-lg p-2">
+              </div>
+              <button onclick="handleBulkUploadCSV()" class="mt-4 w-full bg-kemenkesYellow-500 hover:bg-kemenkesYellow-400 text-brand-800 font-bold py-2.5 rounded-lg text-sm transition shadow-sm">
+                Proses Upload CSV Massal
+              </button>
+            </div>
+          </div>
+
+          <!-- TABEL DAFTAR USER TERDAFTAR + SEARCH + SORTING -->
+          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <h4 class="font-bold text-sm text-slate-800">Daftar Akun Mahasiswa Terdaftar</h4>
+                <p class="text-xs text-slate-500">Total data akun mahasiswa terhubung di sistem Firestore: <span id="studentTotalCount" class="font-bold text-brand-700">0</span></p>
+              </div>
+
+              <!-- CONTROLS: SEARCH & SORT -->
+              <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <!-- Search Bar -->
+                <div class="relative flex-1 md:w-64">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i data-feather="search" class="w-3.5 h-3.5"></i>
+                  </span>
+                  <input type="text" id="studentSearchInput" onkeyup="filterStudentTable()" placeholder="Cari Nama, NIM, atau Email..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <!-- Tombol Sortir -->
+                <button onclick="toggleStudentSort()" title="Urutkan Nama" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0">
+                  <i data-feather="arrow-up-down" class="w-3.5 h-3.5"></i>
+                  <span id="sortDirectionLabel">A - Z</span>
+                </button>
+
+                <!-- Tombol Hapus Semua -->
+                <button onclick="clearAllStudents()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0">
+                  <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Hapus Semua
+                </button>
+              </div>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-100/70 text-slate-500 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
+                    <th class="py-3 px-4">Nama Mahasiswa</th>
+                    <th class="py-3 px-4">NIM</th>
+                    <th class="py-3 px-4">Email Login</th>
+                    <th class="py-3 px-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="studentUserTableBody" class="divide-y divide-slate-200 text-xs"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <h4 class="text-sm font-bold text-slate-800 mb-4">Fitur Lupa Password / Reset Sandi Cepat</h4>
+            <div class="flex flex-col sm:flex-row gap-3 max-w-xl">
+              <input type="email" id="resetEmailInput" placeholder="Masukkan email mahasiswa untuk reset password..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <button onclick="handleSendPasswordReset()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Kirim Link Reset</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- KONFIRMASI & MANAJEMEN TEMA MAHASISWA + SEARCH & SORT -->
+        <section id="page-confirm-topics" class="page-view space-y-6 hidden">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h3 class="text-lg font-bold text-slate-800">Konfirmasi & Kontrol Tema Mahasiswa</h3>
+              <p class="text-xs text-slate-500">Superadmin dapat menyetujui, menolak, atau membuka kunci (unlock) pilihan tema mahasiswa secara real-time.</p>
+            </div>
+
+            <!-- CONTROLS: SEARCH & SORT KONFIRMASI TEMA -->
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <!-- Search Bar -->
+              <div class="relative flex-1 md:w-64">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <i data-feather="search" class="w-3.5 h-3.5"></i>
+                </span>
+                <input type="text" id="confirmTopicSearchInput" onkeyup="filterConfirmTopicTable()" placeholder="Cari Nama, NIM, PA, Tema..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
+              </div>
+
+              <!-- Tombol Sortir -->
+              <button onclick="toggleConfirmTopicSort()" title="Urutkan Nama" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0">
+                <i data-feather="arrow-up-down" class="w-3.5 h-3.5"></i>
+                <span id="confirmSortDirectionLabel">A - Z</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
+                    <th class="py-3.5 px-4">Mahasiswa (NIM)</th>
+                    <th class="py-3.5 px-4">Dosen Tema</th>
+                    <th class="py-3.5 px-4">Tema Dipilih</th>
+                    <th class="py-3.5 px-4 text-center">Status Pemilihan</th>
+                    <th class="py-3.5 px-4 text-center">Aksi / Kontrol Superadmin</th>
+                  </tr>
+                </thead>
+                <tbody id="confirmTopicsTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUPERADMIN: KELOLA MASTER TEMA SKRIPSI -->
+        <section id="page-manage-topics" class="page-view space-y-6 hidden">
+          <div class="flex justify-between items-center">
+            <div>
+              <h3 class="text-lg font-bold text-slate-800">Konfigurasi Master Tema Skripsi</h3>
+              <p class="text-xs text-slate-500">Kelola daftar tema beserta batas maksimal (kuota) pemilihan mahasiswa.</p>
+            </div>
+            <button onclick="exportTopicRekap()" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow">
+              <i data-feather="download" class="w-4 h-4"></i> Tarik Rekap Pilihan Tema (CSV)
+            </button>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+            <h4 class="text-sm font-bold text-slate-800 mb-3">Tambah Tema Baru</h4>
+            <form onsubmit="addTopic(event)" class="flex flex-col sm:flex-row gap-3">
+              <input type="text" id="newTopicName" required placeholder="Nama Tema (misal: INC)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <input type="number" id="newTopicQuota" required min="1" placeholder="Kuota (Maksimal)" class="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Simpan Tema</button>
+            </form>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
+                  <th class="py-3 px-4">Nama Tema Proposal/Skripsi</th>
+                  <th class="py-3 px-4 text-center">Batas Maksimal (Kuota)</th>
+                  <th class="py-3 px-4 text-center">Terpakai</th>
+                  <th class="py-3 px-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="topicTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- SUPERADMIN: MASTER DATA DOSEN -->
+        <section id="page-manage-lecturers" class="page-view space-y-6 hidden">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Master Data Dosen</h3>
+            <p class="text-xs text-slate-500">Input nama-nama dosen secara satuan atau sekaligus banyak (bulk upload CSV) agar dapat dipilih mahasiswa.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Form Satuan -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+              <h4 class="text-sm font-bold text-slate-800 mb-3">Input Dosen Baru (Satuan)</h4>
+              <form onsubmit="addLecturer(event)" class="space-y-3">
+                <input type="text" id="newLecturerName" required placeholder="Nama Lengkap & Gelar Dosen..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold py-2 rounded-lg transition">Tambah Dosen</button>
+              </form>
+            </div>
+
+            <!-- Form Bulk Upload Dosen CSV -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
+              <div>
+                <h4 class="text-sm font-bold text-slate-800 mb-2">Bulk Upload Dosen (CSV)</h4>
+                <p class="text-xs text-slate-500 mb-3">Format kolom baris CSV: <br><code class="bg-slate-100 p-1 rounded text-brand-700 font-mono">nama_dosen</code></p>
+                <input type="file" id="csvLecturerInput" accept=".csv" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 border border-slate-200 rounded-lg p-2">
+              </div>
+              <button onclick="handleBulkUploadLecturers()" class="mt-3 w-full bg-kemenkesYellow-500 hover:bg-kemenkesYellow-400 text-brand-800 font-bold py-2 rounded-lg text-xs transition shadow-sm">
+                Proses Upload Massal Dosen
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            <div class="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+              <span class="font-bold text-xs uppercase text-slate-600">Daftar Dosen Terdaftar</span>
+              <button onclick="clearAllLecturers()" class="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1">
+                <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Hapus Semua Dosen
+              </button>
+            </div>
+            <ul id="lecturerList" class="divide-y divide-slate-200 text-sm max-h-64 overflow-y-auto"></ul>
+          </div>
+        </section>
+
+        <!-- PLOTING PEMBIMBING TA -->
+        <section id="page-assign-advisors" class="page-view space-y-6 hidden">
+          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+            <div class="mb-6">
+              <h3 class="text-lg font-bold text-slate-800">Penetapan Dosen Pembimbing Skripsi (TA)</h3>
+              <p class="text-xs text-slate-500">Plot Dosen Pembimbing Skripsi/TA untuk mahasiswa.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
+                    <th class="py-3 px-4">Mahasiswa</th>
+                    <th class="py-3 px-4">Judul Skripsi</th>
+                    <th class="py-3 px-4">Dosen Tema (Pilihan Mhs)</th>
+                    <th class="py-3 px-4">Dosen TA (Skripsi)</th>
+                    <th class="py-3 px-4 text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="advisorTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MAHASISWA: DASHBOARD SAYA -->
+        <section id="page-dashboard-user" class="page-view space-y-6 hidden">
+          <!-- BANNER USER DIJAMIN PERMANEN DI SINI -->
+          <div id="userStatusBanner" class="p-6 rounded-2xl bg-brand-50 border border-brand-200 text-brand-800 shadow-sm transition-all">
+            <h3 id="bannerTitle" class="text-xl font-bold">Dashboard Mahasiswa</h3>
+            <p id="bannerSub" class="text-xs mt-1">Status Tema Saat Ini: <b id="bannerStatusText">NONE</b></p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+              <span class="text-xs font-bold text-slate-400 uppercase">Tema Proposal / Skripsi</span>
+              <p id="userSelectedTopicDisplay" class="text-lg font-extrabold text-brand-700 mt-1">Belum Memilih Tema</p>
+              <div id="userTopicStatusBadge" class="mt-2"></div>
+            </div>
+            <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm">
+              <span class="text-xs font-bold text-slate-400 uppercase">Dosen Tema</span>
+              <p id="userSelectedPADisplay" class="text-lg font-extrabold text-slate-800 mt-1">Belum Memilih Dosen Tema</p>
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">Riwayat Usulan Judul</h3>
+                <p class="text-xs text-slate-500">Daftar usulan judul eksklusif akun Anda.</p>
+              </div>
+              <!-- BUTTON AJUKAN JUDUL (DISABLED DI DASHBOARD) -->
+              <button disabled class="bg-slate-200 text-slate-400 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-not-allowed opacity-75" title="Pengajuan judul baru belum dibuka">
+                <i data-feather="lock" class="w-3.5 h-3.5"></i> Ajukan Judul Baru (Belum Dibuka)
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
+                    <th class="py-3 px-4">Tanggal / Waktu</th>
+                    <th class="py-3 px-4">Judul Diajukan</th>
+                    <th class="py-3 px-4 text-center">Kemiripan</th>
+                    <th class="py-3 px-4 text-center">Status</th>
+                    <th class="py-3 px-4">Catatan / Alasan</th>
+                  </tr>
+                </thead>
+                <tbody id="userHistoryTableBody" class="divide-y divide-slate-200 text-xs"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- MAHASISWA: PILIH TEMA SKRIPSI & DOSEN TEMA -->
+        <section id="page-select-topic" class="page-view space-y-6 hidden">
+          <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-2xl mx-auto space-y-6">
+            <h3 class="font-bold text-slate-800 text-lg border-b pb-3">Pemilihan Tema Proposal & Dosen Tema</h3>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <h4 class="text-xs font-bold text-slate-700 uppercase mb-2">1. Dosen Tema</h4>
+              
+              <div id="paSelectionForm" class="space-y-3">
+                <select id="userPADropdown" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                  <option value="">-- Pilih Dosen Tema --</option>
+                </select>
+                <button onclick="handleSavePA()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg text-xs shadow">
+                  Simpan Pilihan Dosen Tema
+                </button>
+              </div>
+
+              <div id="paSelectedMsg" class="hidden flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                <div class="flex items-center gap-2">
+                  <i data-feather="check-circle" class="w-5 h-5 text-emerald-600"></i>
+                  <div>
+                    <p class="text-xs text-emerald-800 font-semibold">Dosen Tema Terpilih:</p>
+                    <p id="paSelectedName" class="text-sm font-bold text-emerald-900"></p>
+                  </div>
+                </div>
+                <button onclick="enableEditPA()" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg font-bold">Ubah</button>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <h4 class="text-xs font-bold text-slate-700 uppercase mb-2">2. Tema Proposal / Skripsi</h4>
+              
+              <div id="topicSelectionForm" class="space-y-3">
+                <select id="userTopicDropdown" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                  <option value="">-- Pilih Tema Proposal/Skripsi --</option>
+                </select>
+                <button onclick="handleSaveTopic()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg text-xs shadow">
+                  Kunci & Ajukan Tema
+                </button>
+              </div>
+
+              <div id="topicPendingMsg" class="hidden p-4 bg-slate-300 border border-slate-400 rounded-xl flex items-start gap-3 text-slate-800 shadow-inner">
+                <i data-feather="lock" class="w-5 h-5 text-slate-600 mt-0.5 shrink-0"></i>
+                <div class="w-full">
+                  <div class="flex justify-between items-center">
+                    <span class="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Terkunci (Menunggu Persetujuan Admin)</span>
+                  </div>
+                  <p class="text-xs text-slate-700 font-semibold mt-2">Tema Terpilih:</p>
+                  <p id="topicPendingName" class="text-base font-extrabold text-slate-900"></p>
+                </div>
+              </div>
+
+              <div id="topicApprovedMsg" class="hidden p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-start gap-3 text-emerald-900 shadow-sm">
+                <i data-feather="check-circle" class="w-5 h-5 text-emerald-600 mt-0.5 shrink-0"></i>
+                <div class="w-full">
+                  <span class="bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Disetujui Oleh Superadmin</span>
+                  <p class="text-xs text-emerald-700 font-semibold mt-2">Tema Resmi Anda:</p>
+                  <p id="topicApprovedName" class="text-base font-extrabold text-emerald-900"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LIVE SIMILARITY CHECK -->
+        <section id="page-similarity-check" class="page-view space-y-6 hidden">
+          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm max-w-3xl mx-auto">
+            <h3 class="font-bold text-lg text-slate-800 mb-1">Live Similarity Checker</h3>
+            <p class="text-xs text-slate-500 mb-6">Masukkan judul usulan untuk mengecek kemiripan dengan repositori kampus secara rinci.</p>
+            
+            <form onsubmit="runSimilarityTest(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Usulan Judul Skripsi</label>
+                <textarea id="testTitleInput" rows="3" required placeholder="Contoh: Pengaruh Pemberian Edukasi Terhadap Kecemasan Ibu Hamil..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+              </div>
+              <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-medium py-2.5 rounded-lg text-sm shadow-sm transition">Cek Kemiripan Sekarang</button>
+            </form>
+
+            <div id="similarityResult" class="mt-6 p-4 rounded-xl border hidden space-y-3"></div>
+          </div>
+        </section>
+
+        <!-- REPOSITORI JUDUL -->
+        <section id="page-repository" class="page-view space-y-6 hidden">
+          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-5">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4">
+              <div>
+                <h3 class="font-bold text-slate-800 text-base">Database Repositori Skripsi (Master Judul)</h3>
+                <p class="text-xs text-slate-500">Tambah judul secara satuan atau upload sekaligus banyak (bulk CSV).</p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                  <input type="file" id="csvRepoInput" accept=".csv" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100">
+                  <button onclick="handleBulkUploadRepositories()" class="bg-kemenkesYellow-500 hover:bg-kemenkesYellow-400 text-brand-800 text-xs font-bold px-3 py-2 rounded-lg transition shadow-sm">
+                    Bulk Upload CSV
+                  </button>
+                </div>
+                <button onclick="clearAllRepositories()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1 shadow-sm shrink-0">
+                  <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Hapus Semua Judul
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+              <input type="text" id="repoSearch" onkeyup="filterRepository()" placeholder="Cari judul di repositori..." class="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <form onsubmit="addRepository(event)" class="flex gap-2 w-full sm:w-auto shrink-0">
+                <input type="text" id="newRepoTitle" required placeholder="+ Tambah Judul Baru..." class="px-3 py-2 border border-slate-300 rounded-lg text-xs w-full sm:w-64 focus:outline-none">
+                <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-3 py-2 rounded-lg">Tambah</button>
+              </form>
+            </div>
+
+            <ul id="repoList" class="divide-y divide-slate-200 text-sm border-t border-slate-200 pt-2 max-h-96 overflow-y-auto"></ul>
+          </div>
+        </section>
+
+        <!-- FORM AJUKAN JUDUL MAHASISWA (DISABLED STATE) -->
+        <section id="page-submit-title" class="page-view space-y-6 hidden">
+          <div class="bg-white border border-slate-200 rounded-xl p-8 shadow-sm max-w-2xl mx-auto text-center">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i data-feather="lock" class="w-8 h-8"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 text-xl mb-2">Fitur Belum Dibuka</h3>
+            <p class="text-slate-600 text-sm max-w-md mx-auto mb-6">
+              Tahap pengajuan judul baru belum dibuka oleh pengelola. Saat ini Anda baru dapat memilih <b>Tema Proposal/Skripsi</b> dan <b>Dosen Tema</b>.
+            </p>
+            <button onclick="switchPage('page-select-topic')" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md">
+              Pilih Tema & Dosen Tema Sekarang
+            </button>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL SEARCH PUBLIK -->
+  <div id="publicSearchModal" class="fixed inset-0 bg-slate-600/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative border border-slate-200 max-h-[85vh] flex flex-col">
+      <button onclick="closePublicModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i data-feather="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="mb-4">
+        <span class="text-xs font-bold text-brand-600 uppercase tracking-wider">Hasil Pencarian Repositori</span>
+        <h3 class="text-lg font-bold text-slate-800 mt-1" id="searchQueryTitle">Pencarian: "..."</h3>
+      </div>
+
+      <div id="searchResultsList" class="overflow-y-auto space-y-3 flex-1 pr-1"></div>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center bg-white">
+        <p class="text-xs text-slate-500">Ingin mengajukan judul ini?</p>
+        <button onclick="closePublicModal(); openLoginModal();" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
+          Login SIMARTA
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT UTAMA SISTEM -->
+  <script>
+    feather.replace();
+
+    let currentUser = null; 
+    let studentProfile = {
+      uid: "",
+      nim: "",
+      nama: "",
+      identitas: "",
+      selectedTopic: "",
+      topicStatus: "NONE",
+      selectedPA: ""
+    };
+
+    let students = [];
+    let lecturers = [];
+    let topics = [];
+    let repositories = [];
+    let submissions = [];
+
+    let studentSortDirection = 'asc';
+    let confirmTopicSortDirection = 'asc';
+
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    function openLoginModal() {
+      const btn = document.getElementById('btnLoginSubmit');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Masuk Sekarang</span>`;
+      }
+      document.getElementById('loginModal').classList.remove('hidden');
+    }
+
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.add('hidden');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        if (window.fbOnAuthStateChanged) {
+          window.fbOnAuthStateChanged(window.firebaseAuth, async (user) => {
+            if (user) {
+              if (user.email === "admin@simarta.ac.id" || user.email === "admin@admin.com") {
+                currentUser = { role: 'superadmin', nama: 'Admin Kaprodi', email: user.email };
+                loginAsRole('superadmin');
+              } else {
+                currentUser = { role: 'user', uid: user.uid, email: user.email };
+                const docRef = window.fbDoc(window.firebaseDb, "students", user.uid);
+                const docSnap = await window.fbGetDoc(docRef);
+                
+                if (docSnap.exists()) {
+                  studentProfile = docSnap.data();
+                } else {
+                  const fallbackName = user.email ? user.email.split('@')[0] : "Mahasiswa";
+                  studentProfile = {
+                    uid: user.uid,
+                    nim: fallbackName,
+                    nama: fallbackName,
+                    identitas: fallbackName,
+                    selectedTopic: "",
+                    topicStatus: "NONE",
+                    selectedPA: ""
+                  };
+                }
+                loginAsRole('user');
+              }
+              initFirestoreRealtimeSync();
+            } else {
+              logout();
+            }
+          });
+        }
+      }, 500);
+    });
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value.trim();
+      const btn = document.getElementById('btnLoginSubmit');
+
+      if (!email || !pass) {
+        Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Mohon isi email dan password.' });
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<span>Memeriksa Akun...</span>`;
+
+      try {
+        await window.fbSignIn(window.firebaseAuth, email, pass);
+        closeLoginModal();
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginPassword').value = '';
+        Swal.fire({ icon: 'success', title: 'Login Berhasil', timer: 1500, showConfirmButton: false });
+      } catch (error) {
+        console.error("Login Error:", error);
+        let errorMsg = "Email atau password yang Anda masukkan salah.";
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+          errorMsg = "Email atau password salah. Silakan periksa kembali.";
+        }
+        Swal.fire({ icon: 'error', title: 'Gagal Login', text: errorMsg });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Masuk Sekarang</span>`;
+      }
+    }
+
+    async function handleCreateUser(e) {
+      e.preventDefault();
+      const name = document.getElementById('newStudentName').value.trim();
+      const nim = document.getElementById('newStudentNIM').value.trim();
+      const email = document.getElementById('newStudentEmail').value.trim();
+      const pass = document.getElementById('newStudentPassword').value.trim();
+
+      try {
+        const cred = await window.fbCreateUser(window.firebaseAuth, email, pass);
+        const uid = cred.user.uid;
+
+        const newStudentData = {
+          uid: uid,
+          nim: nim,
+          nama: name,
+          identitas: name,
+          email: email,
+          selectedTopic: "",
+          topicStatus: "NONE",
+          selectedPA: ""
+        };
+
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), newStudentData);
+
+        Swal.fire({ icon: 'success', title: 'Akun Berhasil Dibuat!', text: `Mahasiswa ${name} (${nim}) memiliki dashboard tersendiri.` });
+        document.getElementById('newStudentName').value = '';
+        document.getElementById('newStudentNIM').value = '';
+        document.getElementById('newStudentEmail').value = '';
+        document.getElementById('newStudentPassword').value = '';
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Gagal Membuat Akun', text: error.message });
+      }
+    }
+
+    async function handleBulkUploadCSV() {
+      const fileInput = document.getElementById('csvFileInput');
+      if (!fileInput.files.length) {
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV terlebih dahulu.' });
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        if (lines.length < 2) {
+          Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV kosong atau tidak memiliki data baris.' });
+          return;
+        }
+
+        const totalItems = lines.length - 1;
+
+        Swal.fire({
+          title: 'Sedang Mengunggah...',
+          html: `Memproses data <b>0</b> dari <b>${totalItems}</b> mahasiswa...`,
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.trim().replace(/["']/g, ''));
+          if (cols.length >= 4) {
+            const [nama, nim, email, password] = cols;
+            try {
+              const cred = await window.fbCreateUser(window.firebaseAuth, email, password);
+              const uid = cred.user.uid;
+
+              const studentData = {
+                uid: uid,
+                nim: nim,
+                nama: nama,
+                identitas: nama,
+                email: email,
+                selectedTopic: "",
+                topicStatus: "NONE",
+                selectedPA: ""
+              };
+              await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), studentData);
+              successCount++;
+            } catch (err) {
+              console.error(`Gagal mendaftarkan ${email}:`, err);
+              failCount++;
+            }
+          } else {
+            failCount++;
+          }
+
+          Swal.update({
+            html: `Memproses data <b>${i}</b> dari <b>${totalItems}</b> mahasiswa...`
+          });
+
+          await delay(300);
+        }
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Bulk Upload Selesai!',
+          html: `Berhasil mendaftarkan: <b>${successCount}</b> akun.<br>Gagal/Terlewat: <b>${failCount}</b> akun.`
+        });
+        fileInput.value = '';
+      };
+
+      reader.readAsText(file);
+    }
+
+    async function removeStudent(docId) {
+      try {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "students", docId));
+        Swal.fire({ icon: 'success', title: 'Akun Mahasiswa Dihapus dari Firestore', timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+      }
+    }
+
+    async function clearAllStudents() {
+      const confirm = await Swal.fire({
+        title: 'Hapus Semua Mahasiswa?',
+        text: `Terdapat ${students.length} akun mahasiswa di database Firestore yang akan dibersihkan!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Semua!'
+      });
+
+      if (confirm.isConfirmed) {
+        Swal.fire({
+          title: 'Membersihkan Data Mahasiswa...',
+          text: 'Mohon tunggu sebentar.',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+          let batch = window.fbWriteBatch(window.firebaseDb);
+          let counter = 0;
+
+          for (let st of students) {
+            batch.delete(window.fbDoc(window.firebaseDb, "students", st.id));
+            counter++;
+
+            if (counter === 450) {
+              await batch.commit();
+              batch = window.fbWriteBatch(window.firebaseDb);
+              counter = 0;
+            }
+          }
+
+          if (counter > 0) {
+            await batch.commit();
+          }
+
+          Swal.fire({ icon: 'success', title: 'Data Mahasiswa Berhasil Dibersihkan!' });
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+        }
+      }
+    }
+
+    async function handleBulkUploadLecturers() {
+      const fileInput = document.getElementById('csvLecturerInput');
+      if (!fileInput.files.length) {
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV dosen terlebih dahulu.' });
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        if (lines.length === 0) {
+          Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV dosen kosong.' });
+          return;
+        }
+
+        Swal.fire({
+          title: 'Mengunggah Data Dosen...',
+          text: 'Mohon tunggu sebentar.',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        let count = 0;
+        for (let i = 0; i < lines.length; i++) {
+          let dosenName = lines[i].replace(/["']/g, '').trim();
+
+          if (dosenName && dosenName.toLowerCase() !== 'nama_dosen' && dosenName.toLowerCase() !== 'nama') {
+            try {
+              const docId = Date.now().toString() + '_' + i;
+              await window.fbSetDoc(window.fbDoc(window.firebaseDb, "lecturers", docId), { name: dosenName });
+              count++;
+            } catch(err) {
+              console.error(err);
+            }
+          }
+        }
+
+        Swal.fire({ icon: 'success', title: 'Bulk Upload Dosen Berhasil!', text: `${count} data dosen berhasil ditambahkan secara rapi.` });
+        fileInput.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    async function handleBulkUploadRepositories() {
+      const fileInput = document.getElementById('csvRepoInput');
+      if (!fileInput.files.length) {
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV judul repositori terlebih dahulu.' });
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result;
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        if (lines.length === 0) {
+          Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV kosong.' });
+          return;
+        }
+
+        Swal.fire({
+          title: 'Mengunggah Master Judul...',
+          text: 'Proses kilat mengunggah ratusan judul sekaligus.',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+          let batch = window.fbWriteBatch(window.firebaseDb);
+          let count = 0;
+          let batchCounter = 0;
+
+          for (let i = 0; i < lines.length; i++) {
+            let judul = lines[i].replace(/["']/g, '').trim();
+
+            if (judul && judul.toLowerCase() !== 'judul' && judul.toLowerCase() !== 'title') {
+              const uniqueId = Date.now().toString() + '_' + i;
+              const docRef = window.fbDoc(window.firebaseDb, "repositories", uniqueId);
+              
+              batch.set(docRef, { title: judul });
+              count++;
+              batchCounter++;
+
+              if (batchCounter === 450) {
+                await batch.commit();
+                batch = window.fbWriteBatch(window.firebaseDb);
+                batchCounter = 0;
+              }
+            }
+          }
+
+          if (batchCounter > 0) {
+            await batch.commit();
+          }
+
+          Swal.fire({ 
+            icon: 'success', 
+            title: 'Bulk Upload Judul Selesai!', 
+            text: `Berhasil menambahkan ${count} judul skripsi ke database repositori.` 
+          });
+          fileInput.value = '';
+
+        } catch (err) {
+          console.error(err);
+          Swal.fire({ icon: 'error', title: 'Gagal Upload', text: err.message });
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    async function handleSendPasswordReset() {
+      const email = document.getElementById('resetEmailInput').value.trim();
+      if (!email) {
+        Swal.fire({ icon: 'warning', title: 'Masukkan Email', text: 'Harap isi email mahasiswa yang ingin direset sandinya.' });
+        return;
+      }
+
+      try {
+        await window.fbResetPassword(window.firebaseAuth, email);
+        Swal.fire({ icon: 'success', title: 'Link Terkirim!', text: `Email instruksi reset password telah dikirim ke ${email}.` });
+        document.getElementById('resetEmailInput').value = '';
+      } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Gagal Mengirim Reset', text: error.message });
+      }
+    }
+
+    function loginAsRole(role) {
+      document.getElementById('view-landing').classList.add('hidden');
+      document.getElementById('view-app').classList.remove('hidden');
+
+      if (role === 'superadmin') {
+        document.getElementById('navSuperadmin').classList.remove('hidden');
+        document.getElementById('navUser').classList.add('hidden');
+        document.getElementById('userName').innerText = 'Admin Kaprodi';
+        document.getElementById('userRoleBadge').innerText = 'Superadmin';
+        document.getElementById('userAvatar').innerText = 'ADM';
+        document.getElementById('roleDisplayBadge').innerText = 'Superadmin / Pengelola';
+        switchPage('page-dashboard-admin');
+      } else {
+        document.getElementById('navSuperadmin').classList.add('hidden');
+        document.getElementById('navUser').classList.remove('hidden');
+        
+        const displayNama = studentProfile.nama || studentProfile.identitas || (currentUser.email ? currentUser.email.split('@')[0] : 'Mahasiswa');
+        const displayNIM = studentProfile.nim || '-';
+        
+        document.getElementById('userName').innerText = displayNama;
+        document.getElementById('userRoleBadge').innerText = 'NIM: ' + displayNIM;
+        document.getElementById('userAvatar').innerText = displayNama.substring(0, 2).toUpperCase();
+        document.getElementById('roleDisplayBadge').innerText = 'Mahasiswa / User';
+        
+        const userFormIdentity = document.getElementById('userFormIdentity');
+        if (userFormIdentity) userFormIdentity.value = `${displayNama} (${displayNIM})`;
+
+        populatePADropdown();
+        populateTopicDropdown();
+        checkStudentTopicState();
+        renderUserDashboard();
+        switchPage('page-dashboard-user');
+      }
+      feather.replace();
+    }
+
+    async function logout() {
+      if (window.firebaseAuth) {
+        await window.fbSignOut(window.firebaseAuth);
+      }
+      currentUser = null;
+      document.getElementById('view-app').classList.add('hidden');
+      document.getElementById('view-landing').classList.remove('hidden');
+    }
+
+    function initFirestoreRealtimeSync() {
+      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "students"), (snapshot) => {
+        students = [];
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          students.push({ 
+            id: docSnap.id, 
+            uid: docSnap.id, 
+            ...data 
+          });
+
+          if (currentUser && currentUser.role === 'user' && docSnap.id === currentUser.uid) {
+            studentProfile = data;
+            renderUserDashboard();
+            checkStudentTopicState();
+          }
+        });
+        renderConfirmTopicsTable();
+        renderStudentUserTable();
+        renderTopics();
+      });
+
+      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "topics"), (snapshot) => {
+        topics = [];
+        snapshot.forEach(docSnap => {
+          topics.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderTopics();
+        populateTopicDropdown();
+      });
+
+      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "lecturers"), (snapshot) => {
+        lecturers = [];
+        snapshot.forEach(docSnap => {
+          lecturers.push({ id: docSnap.id, name: docSnap.data().name });
+        });
+        renderLecturers();
+        populatePADropdown();
+      });
+
+      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "repositories"), (snapshot) => {
+        repositories = [];
+        snapshot.forEach(docSnap => {
+          repositories.push({ id: docSnap.id, title: docSnap.data().title });
+        });
+        renderRepositories();
+      });
+
+      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "submissions"), (snapshot) => {
+        submissions = [];
+        snapshot.forEach(docSnap => {
+          submissions.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderSubmissions();
+      });
+    }
+
+    function toggleStudentSort() {
+      studentSortDirection = (studentSortDirection === 'asc') ? 'desc' : 'asc';
+      document.getElementById('sortDirectionLabel').innerText = (studentSortDirection === 'asc') ? 'A - Z' : 'Z - A';
+      renderStudentUserTable();
+    }
+
+    function renderStudentUserTable() {
+      const tbody = document.getElementById('studentUserTableBody');
+      const countDisplay = document.getElementById('studentTotalCount');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (countDisplay) countDisplay.innerText = students.length;
+
+      if (students.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Belum ada akun mahasiswa yang terdaftar di Firestore.</td></tr>`;
+        return;
+      }
+
+      const searchKeyword = (document.getElementById('studentSearchInput')?.value || '').toLowerCase().trim();
+
+      let filtered = students.filter(st => {
+        const name = (st.nama || st.identitas || '').toLowerCase();
+        const nim = (st.nim || '').toLowerCase();
+        const email = (st.email || '').toLowerCase();
+
+        return name.includes(searchKeyword) || nim.includes(searchKeyword) || email.includes(searchKeyword);
+      });
+
+      filtered.sort((a, b) => {
+        const nameA = (a.nama || a.identitas || '').toLowerCase();
+        const nameB = (b.nama || b.identitas || '').toLowerCase();
+        return studentSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Tidak ada mahasiswa yang cocok dengan pencarian "${searchKeyword}".</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(st => {
+        const name = st.nama || st.identitas || 'Mahasiswa';
+        const nim = st.nim || (st.email ? st.email.split('@')[0] : '-');
+        const email = st.email || '-';
+
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 font-bold text-slate-800">${name}</td>
+            <td class="py-3 px-4 font-mono text-slate-600">${nim}</td>
+            <td class="py-3 px-4 text-slate-600">${email}</td>
+            <td class="py-3 px-4 text-center">
+              <button onclick="removeStudent('${st.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold hover:underline">Hapus</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterStudentTable() {
+      renderStudentUserTable();
+    }
+
+    function toggleConfirmTopicSort() {
+      confirmTopicSortDirection = (confirmTopicSortDirection === 'asc') ? 'desc' : 'asc';
+      document.getElementById('confirmSortDirectionLabel').innerText = (confirmTopicSortDirection === 'asc') ? 'A - Z' : 'Z - A';
+      renderConfirmTopicsTable();
+    }
+
+    function renderConfirmTopicsTable() {
+      const tbody = document.getElementById('confirmTopicsTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (students.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">Belum ada data pendaftaran mahasiswa</td></tr>`;
+        return;
+      }
+
+      const searchKeyword = (document.getElementById('confirmTopicSearchInput')?.value || '').toLowerCase().trim();
+
+      let filtered = students.filter(st => {
+        const name = (st.nama || st.identitas || '').toLowerCase();
+        const nim = (st.nim || '').toLowerCase();
+        const pa = (st.selectedPA || '').toLowerCase();
+        const topic = (st.selectedTopic || '').toLowerCase();
+        const status = (st.topicStatus || '').toLowerCase();
+
+        return name.includes(searchKeyword) || nim.includes(searchKeyword) || pa.includes(searchKeyword) || topic.includes(searchKeyword) || status.includes(searchKeyword);
+      });
+
+      filtered.sort((a, b) => {
+        const nameA = (a.nama || a.identitas || '').toLowerCase();
+        const nameB = (b.nama || b.identitas || '').toLowerCase();
+        return confirmTopicSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">Tidak ada data tema yang cocok dengan pencarian "${searchKeyword}".</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(st => {
+        const displayName = st.nama || st.identitas || 'Mahasiswa';
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-4 px-4 font-bold text-slate-900">${displayName}<br><span class="text-xs font-normal text-slate-500">NIM: ${st.nim || '-'}</span></td>
+            <td class="py-4 px-4 text-xs font-semibold text-slate-700">${st.selectedPA || 'Belum Memilih'}</td>
+            <td class="py-4 px-4 font-bold text-brand-700">${st.selectedTopic || 'Belum Memilih'}</td>
+            <td class="py-4 px-4 text-center">
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${st.topicStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : (st.topicStatus === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-slate-200 text-slate-700')}">
+                ${st.topicStatus || 'NONE'}
+              </span>
+            </td>
+            <td class="py-4 px-4 text-center space-x-1">
+              <button onclick="adminSetTopicStatus('${st.uid}', 'APPROVED')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow">Setujui</button>
+              <button onclick="adminSetTopicStatus('${st.uid}', 'REJECTED')" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow">Tolak</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function filterConfirmTopicTable() {
+      renderConfirmTopicsTable();
+    }
+
+    async function addTopic(e) {
+      e.preventDefault();
+      const name = document.getElementById('newTopicName').value.trim();
+      const quota = parseInt(document.getElementById('newTopicQuota').value);
+      if (name && quota > 0) {
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "topics", name), { name: name, maxQuota: quota });
+        document.getElementById('newTopicName').value = '';
+        document.getElementById('newTopicQuota').value = '';
+        Swal.fire({ icon: 'success', title: 'Tema Ditambahkan!', timer: 1500, showConfirmButton: false });
+      }
+    }
+
+    async function removeTopic(topicId) {
+      await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "topics", topicId));
+    }
+
+    async function addLecturer(e) {
+      e.preventDefault();
+      const input = document.getElementById('newLecturerName');
+      const val = input.value.trim();
+      if (val) {
+        const docId = Date.now().toString();
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "lecturers", docId), { name: val });
+        input.value = '';
+        Swal.fire({ icon: 'success', title: 'Dosen Ditambahkan!', timer: 1500, showConfirmButton: false });
+      }
+    }
+
+    async function removeLecturer(docId) {
+      try {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "lecturers", docId));
+        Swal.fire({ icon: 'success', title: 'Dosen Berhasil Dihapus', timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+      }
+    }
+
+    async function clearAllLecturers() {
+      const confirm = await Swal.fire({
+        title: 'Kosongkan Semua Dosen?',
+        text: "Fitur ini akan menghapus semua daftar dosen terdaftar untuk dibersihkan.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Semua!'
+      });
+
+      if (confirm.isConfirmed) {
+        for (let docItem of lecturers) {
+          await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "lecturers", docItem.id));
+        }
+        Swal.fire({ icon: 'success', title: 'Daftar Dosen Telah Dibersihkan!' });
+      }
+    }
+
+    async function addRepository(e) {
+      e.preventDefault();
+      const input = document.getElementById('newRepoTitle');
+      const val = input.value.trim();
+      if (val) {
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "repositories", Date.now().toString()), { title: val });
+        input.value = '';
+        Swal.fire({ icon: 'success', title: 'Judul Ditambahkan!', timer: 1200, showConfirmButton: false });
+      }
+    }
+
+    async function removeRepository(docId) {
+      try {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "repositories", docId));
+        Swal.fire({ icon: 'success', title: 'Judul Dihapus', timer: 1000, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+      }
+    }
+
+    async function clearAllRepositories() {
+      const confirm = await Swal.fire({
+        title: 'Kosongkan Seluruh Repositori Judul?',
+        text: `Terdapat ${repositories.length} judul yang akan dihapus dari database master!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Semua Judul!'
+      });
+
+      if (confirm.isConfirmed) {
+        Swal.fire({
+          title: 'Menghapus Semua Judul...',
+          text: 'Mohon tunggu sebentar.',
+          allowOutsideClick: false,
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        try {
+          let batch = window.fbWriteBatch(window.firebaseDb);
+          let counter = 0;
+
+          for (let repo of repositories) {
+            batch.delete(window.fbDoc(window.firebaseDb, "repositories", repo.id));
+            counter++;
+
+            if (counter === 450) {
+              await batch.commit();
+              batch = window.fbWriteBatch(window.firebaseDb);
+              counter = 0;
+            }
+          }
+
+          if (counter > 0) {
+            await batch.commit();
+          }
+
+          Swal.fire({ icon: 'success', title: 'Repositori Berhasil Dikosongkan!' });
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Gagal Mengosongkan', text: err.message });
+        }
+      }
+    }
+
+    function renderTopics() {
+      const tbody = document.getElementById('topicTableBody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      topics.forEach((topic) => {
+        const countUsed = students.filter(s => s.selectedTopic === topic.name && s.topicStatus === 'APPROVED').length;
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50">
+            <td class="py-3.5 px-4 font-bold text-slate-800">${topic.name}</td>
+            <td class="py-3.5 px-4 text-center font-semibold">${topic.maxQuota}x</td>
+            <td class="py-3.5 px-4 text-center font-semibold text-brand-600">${countUsed}x</td>
+            <td class="py-3.5 px-4 text-center">
+              <button onclick="removeTopic('${topic.name}')" class="text-rose-500 hover:text-rose-700 font-semibold text-xs">Hapus</button>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    function renderLecturers() {
+      const list = document.getElementById('lecturerList');
+      if (!list) return;
+      list.innerHTML = '';
+      lecturers.forEach((doc) => {
+        list.innerHTML += `
+          <li class="py-3 px-4 flex justify-between items-center">
+            <span class="font-medium text-slate-800">${doc.name}</span>
+            <button onclick="removeLecturer('${doc.id}')" class="text-xs text-rose-500 hover:underline font-semibold">Hapus</button>
+          </li>
+        `;
+      });
+    }
+
+    function renderRepositories() {
+      const list = document.getElementById('repoList');
+      if (!list) return;
+      list.innerHTML = '';
+      repositories.forEach((repo) => {
+        list.innerHTML += `
+          <li class="py-3 px-3 flex justify-between items-center gap-4 hover:bg-slate-50 rounded">
+            <span class="text-slate-700 text-xs leading-relaxed flex-1">${repo.title}</span>
+            <button onclick="removeRepository('${repo.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-semibold shrink-0">Hapus</button>
+          </li>`;
+      });
+    }
+
+    function filterRepository() {
+      const keyword = document.getElementById('repoSearch').value.toLowerCase();
+      const list = document.getElementById('repoList');
+      const items = list.getElementsByTagName('li');
+      for (let i = 0; i < items.length; i++) {
+        const text = items[i].textContent || items[i].innerText;
+        if (text.toLowerCase().indexOf(keyword) > -1) {
+          items[i].style.display = "";
+        } else {
+          items[i].style.display = "none";
+        }
+      }
+    }
+
+    function populatePADropdown() {
+      const dropdown = document.getElementById('userPADropdown');
+      if (!dropdown) return;
+      dropdown.innerHTML = '<option value="">-- Pilih Dosen Tema --</option>';
+      lecturers.forEach(dosen => {
+        dropdown.innerHTML += `<option value="${dosen.name}">${dosen.name}</option>`;
+      });
+    }
+
+    function populateTopicDropdown() {
+      const dropdown = document.getElementById('userTopicDropdown');
+      if (!dropdown) return;
+      dropdown.innerHTML = '<option value="">-- Pilih Tema Proposal/Skripsi --</option>';
+      topics.forEach(t => {
+        dropdown.innerHTML += `<option value="${t.name}">${t.name} (Maks Kuota: ${t.maxQuota})</option>`;
+      });
+    }
+
+    async function handleSavePA() {
+      const val = document.getElementById('userPADropdown').value;
+      if (!val) return;
+      studentProfile.selectedPA = val;
+      await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", currentUser.uid), studentProfile, { merge: true });
+      checkStudentTopicState();
+      renderUserDashboard();
+      Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Dosen Tema berhasil disimpan.', timer: 1500, showConfirmButton: false });
+    }
+
+    function enableEditPA() {
+      document.getElementById('paSelectionForm').classList.remove('hidden');
+      document.getElementById('paSelectedMsg').classList.add('hidden');
+    }
+
+    async function handleSaveTopic() {
+      const val = document.getElementById('userTopicDropdown').value;
+      if (!val) return;
+
+      studentProfile.selectedTopic = val;
+      studentProfile.topicStatus = 'PENDING';
+      await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", currentUser.uid), studentProfile, { merge: true });
+      checkStudentTopicState();
+      renderUserDashboard();
+      Swal.fire({ icon: 'info', title: 'Tema Terkunci & Diajukan', text: 'Tema Anda kini terkunci menunggu persetujuan Superadmin.', timer: 2000, showConfirmButton: false });
+    }
+
+    function checkStudentTopicState() {
+      if (studentProfile.selectedPA) {
+        document.getElementById('paSelectionForm').classList.add('hidden');
+        document.getElementById('paSelectedMsg').classList.remove('hidden');
+        document.getElementById('paSelectedName').innerText = studentProfile.selectedPA;
+      }
+
+      const form = document.getElementById('topicSelectionForm');
+      const pendingBox = document.getElementById('topicPendingMsg');
+      const approvedBox = document.getElementById('topicApprovedMsg');
+
+      if (!form) return;
+      form.classList.add('hidden');
+      pendingBox.classList.add('hidden');
+      approvedBox.classList.add('hidden');
+
+      if (studentProfile.topicStatus === 'PENDING') {
+        pendingBox.classList.remove('hidden');
+        document.getElementById('topicPendingName').innerText = studentProfile.selectedTopic;
+      } else if (studentProfile.topicStatus === 'APPROVED') {
+        approvedBox.classList.remove('hidden');
+        document.getElementById('topicApprovedName').innerText = studentProfile.selectedTopic;
+      } else {
+        form.classList.remove('hidden');
+      }
+    }
+
+    async function adminSetTopicStatus(uid, status) {
+      await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), { topicStatus: status }, { merge: true });
+      Swal.fire({ icon: 'success', title: `Status Tema Diperbarui (${status})!`, timer: 1500, showConfirmButton: false });
+    }
+
+    function renderSubmissions() {
+      const tbody = document.getElementById('submissionTableBody');
+      const advisorBody = document.getElementById('advisorTableBody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = '';
+      if (advisorBody) advisorBody.innerHTML = '';
+
+      submissions.forEach((item) => {
+        tbody.innerHTML += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-4 px-4 font-medium">${item.identitas || item.nama} (${item.nim})</td>
+            <td class="py-4 px-4">${item.tema} <br><span class="text-xs text-slate-400">${item.dosenPA}</span></td>
+            <td class="py-4 px-4 italic">"${item.judul}"</td>
+            <td class="py-4 px-4 text-center">${item.similarity}</td>
+            <td class="py-4 px-4 text-center">${item.status}</td>
+            <td class="py-4 px-4">${item.alasan || '-'}</td>
+            <td class="py-4 px-4 text-center">
+              <button onclick="updateStatus('${item.id}', 'VERIFIED')" class="bg-brand-500 hover:bg-brand-600 text-white px-2.5 py-1 rounded text-xs font-bold shadow">Setujui</button>
+            </td>
+          </tr>
+        `;
+
+        if (advisorBody) {
+          advisorBody.innerHTML += `
+            <tr class="hover:bg-slate-50">
+              <td class="py-3 px-4 font-bold text-slate-800">${item.nama || item.identitas} (${item.nim})</td>
+              <td class="py-3 px-4 text-xs italic">"${item.judul}"</td>
+              <td class="py-3 px-4 text-xs">${item.dosenPA}</td>
+              <td class="py-3 px-4 text-xs font-semibold text-brand-700">${item.dosenTA || 'Belum Diplot'}</td>
+              <td class="py-3 px-4 text-center">
+                <button onclick="plotAdvisor('${item.id}')" class="bg-brand-500 text-white text-xs px-3 py-1 rounded-lg">Plot Dosen</button>
+              </td>
+            </tr>
+          `;
+        }
+      });
+    }
+
+    async function plotAdvisor(subId) {
+      const lecturerOptions = lecturers.reduce((acc, curr) => ({ ...acc, [curr.name]: curr.name }), {});
+      
+      const { value: dosen } = await Swal.fire({
+        title: 'Pilih Dosen Pembimbing Skripsi',
+        input: 'select',
+        inputOptions: lecturerOptions,
+        inputPlaceholder: 'Pilih Dosen...',
+        showCancelButton: true
+      });
+
+      if (dosen) {
+        await window.fbUpdateDoc(window.fbDoc(window.firebaseDb, "submissions", subId), { dosenTA: dosen });
+        Swal.fire({ icon: 'success', title: 'Plotting Berhasil!', timer: 1500, showConfirmButton: false });
+      }
+    }
+
+    async function updateStatus(subId, newStatus) {
+      await window.fbUpdateDoc(window.fbDoc(window.firebaseDb, "submissions", subId), { status: newStatus });
+    }
+
+    // FUNGSI RENDER DASHBOARD USER YANG DIPERBAIKI (AMAN DARI NULL/UNDEFINED)
+    function renderUserDashboard() {
+      const topicDisplay = document.getElementById('userSelectedTopicDisplay');
+      const paDisplay = document.getElementById('userSelectedPADisplay');
+      const topicBadge = document.getElementById('userTopicStatusBadge');
+      const userHistoryBody = document.getElementById('userHistoryTableBody');
+      
+      const bannerTitle = document.getElementById('bannerTitle');
+      const bannerStatusText = document.getElementById('bannerStatusText');
+
+      if (!topicDisplay) return;
+
+      // Ambil nama mahasiswa dengan fallback bertingkat
+      let displayName = studentProfile.nama || studentProfile.identitas;
+      if (!displayName && currentUser && currentUser.email) {
+        displayName = currentUser.email.split('@')[0];
+      }
+      if (!displayName) {
+        displayName = "Mahasiswa";
+      }
+
+      // Update Teks Banner
+      if (bannerTitle) bannerTitle.innerText = `Dashboard Mahasiswa: ${displayName}`;
+      if (bannerStatusText) bannerStatusText.innerText = studentProfile.topicStatus || 'NONE';
+
+      // Update Tampilan Tema & Dosen Tema
+      topicDisplay.innerText = studentProfile.selectedTopic || "Belum Memilih Tema";
+      if (paDisplay) paDisplay.innerText = studentProfile.selectedPA || "Belum Memilih Dosen Tema";
+
+      // Update Badge Status Tema
+      if (topicBadge) {
+        if (studentProfile.topicStatus === 'APPROVED') {
+          topicBadge.innerHTML = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">Disetujui Admin</span>`;
+        } else if (studentProfile.topicStatus === 'PENDING') {
+          topicBadge.innerHTML = `<span class="bg-slate-200 text-slate-700 text-xs px-2.5 py-1 rounded-full font-bold">Terkunci / Menunggu Persetujuan</span>`;
+        } else {
+          topicBadge.innerHTML = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">Belum Dikunci</span>`;
+        }
+      }
+
+      // Render Riwayat Usulan Judul jika ada
+      if (userHistoryBody) {
+        userHistoryBody.innerHTML = '';
+        submissions.filter(s => s.nim === studentProfile.nim).forEach(item => {
+          userHistoryBody.innerHTML += `
+            <tr>
+              <td class="py-3 px-4">${item.tanggal}</td>
+              <td class="py-3 px-4 italic">"${item.judul}"</td>
+              <td class="py-3 px-4 text-center">${item.similarity}</td>
+              <td class="py-3 px-4 text-center">${item.status}</td>
+              <td class="py-3 px-4">${item.alasan || '-'}</td>
+            </tr>
+          `;
+        });
+      }
+    }
+
+    function runSimilarityTest(e) {
+      e.preventDefault();
+      const input = document.getElementById('testTitleInput').value.toLowerCase();
+      const resBox = document.getElementById('similarityResult');
+      resBox.classList.remove('hidden');
+
+      let matchFound = repositories.some(r => r.title.toLowerCase().includes(input));
+      let score = matchFound ? Math.floor(Math.random() * 30) + 70 : Math.floor(Math.random() * 15) + 5;
+
+      if (score > 50) {
+        resBox.innerHTML = `<h4 class="font-bold text-sm text-rose-600">Hasil SIMILARITY: ${score}% (TIDAK LOLOS - TERDETEKSI KEMIRIPAN)</h4>`;
+      } else {
+        resBox.innerHTML = `<h4 class="font-bold text-sm text-emerald-700">Hasil SIMILARITY: ${score}% (LOLOS - BEBAS DUPLIKASI)</h4>`;
+      }
+    }
+
+    function handlePublicSearch(e) {
+      e.preventDefault();
+      const q = document.getElementById('publicSearchInput').value.toLowerCase();
+      document.getElementById('searchQueryTitle').innerText = `Pencarian Repositori Kampus: "${q}"`;
+
+      const list = document.getElementById('searchResultsList');
+      list.innerHTML = '';
+      const matched = repositories.filter(r => r.title.toLowerCase().includes(q));
+
+      if (matched.length > 0) {
+        matched.forEach(item => {
+          list.innerHTML += `<div class="p-3 bg-slate-50 border rounded-lg text-xs font-medium text-slate-700">${item.title}</div>`;
+        });
+      } else {
+        list.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">Tidak ada judul yang mirip di repositori. Judul dapat diajukan!</div>`;
+      }
+
+      document.getElementById('publicSearchModal').classList.remove('hidden');
+    }
+
+    function closePublicModal() {
+      document.getElementById('publicSearchModal').classList.add('hidden');
+    }
+
+    function exportToExcel() {
+      let csvContent = "data:text/csv;charset=utf-8,Nama,NIM,Tema,Judul,Status\n";
+      submissions.forEach(s => {
+        csvContent += `"${s.nama}","${s.nim}","${s.tema}","${s.judul}","${s.status}"\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "rekap_pengajuan_judul.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportTopicRekap() {
+      let csvContent = "data:text/csv;charset=utf-8,Mahasiswa,NIM,Dosen Tema,Tema,Status\n";
+      students.forEach(st => {
+        csvContent += `"${st.nama || ''}","${st.nim || ''}","${st.selectedPA || ''}","${st.selectedTopic || ''}","${st.topicStatus || ''}"\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "rekap_pilihan_tema.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function switchPage(pageId) {
+      document.querySelectorAll('.page-view').forEach(page => page.classList.add('hidden'));
+      document.getElementById(pageId).classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
