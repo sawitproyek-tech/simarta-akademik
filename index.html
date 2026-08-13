@@ -100,7 +100,11 @@
         </div>
         <span class="font-bold text-xl tracking-tight text-brand-700">SIMARTA</span>
       </div>
+      <!-- Tombol Panduan & Login (Digabung dalam satu div) -->
       <div class="flex items-center gap-3">
+        <button onclick="openPanduanSIMARTA()" class="hover:text-brand-700 text-sm font-bold px-5 transition">
+          Panduan SIMARTA
+        </button>
         <button onclick="openLoginModal()" class="bg-kemenkesYellow-500 hover:bg-kemenkesYellow-400 text-brand-700 text-sm font-bold px-5 py-2 rounded-lg shadow-md transition">
           Login SIMARTA
         </button>
@@ -702,6 +706,11 @@
     let confirmTopicSortDirection = 'asc';
 
     const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    function openPanduanSIMARTA() {
+      // Membuka link panduan di tab baru
+    window.open('https://drive.google.com/file/d/11ja87EepKkXCOOGIFPCsh5aEHr0eB7c8/view', '_blank');
+    }
 
     function openLoginModal() {
       const btn = document.getElementById('btnLoginSubmit');
