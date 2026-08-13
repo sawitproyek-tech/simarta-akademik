@@ -9,8 +9,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Feather Icons -->
   <script src="https://unpkg.com/feather-icons"></script>
-  <!-- html2pdf.js for PDF Generation -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- SweetAlert2 CSS & JS -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -35,7 +33,8 @@
       updateDoc, 
       deleteDoc, 
       onSnapshot,
-      writeBatch
+      writeBatch,
+      runTransaction
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     // Konfigurasi Firebase Anda
@@ -53,7 +52,6 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Ekspose ke global scope
     window.firebaseAuth = auth;
     window.firebaseDb = db;
     window.fbSignIn = signInWithEmailAndPassword;
@@ -70,6 +68,7 @@
     window.fbDeleteDoc = deleteDoc;
     window.fbOnSnapshot = onSnapshot;
     window.fbWriteBatch = writeBatch;
+    window.fbRunTransaction = runTransaction;
   </script>
 
   <script>
@@ -133,7 +132,7 @@
     </main>
 
     <footer class="text-center py-6 text-xs text-slate-500 border-t border-brand-100">
-      &copy; 2026 SIMARTA - Akademik
+      &copy; 2026 SIMARTA - Akademik MIORI
     </footer>
   </div>
 
@@ -203,7 +202,7 @@
             <i data-feather="check-square" class="w-4 h-4"></i> Konfirmasi Tema Mhs
           </button>
           <button onclick="switchPage('page-manage-topics')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
-            <i data-feather="layers" class="w-4 h-4"></i> Kelola Tema Skripsi
+            <i data-feather="layers" class="w-4 h-4"></i> Kelola Tema & Dosen Pembimbing
           </button>
           <button onclick="switchPage('page-manage-lecturers')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
             <i data-feather="user-check" class="w-4 h-4"></i> Master Data Dosen
@@ -227,7 +226,6 @@
           <button onclick="switchPage('page-select-topic')" class="nav-link w-full flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-brand-50 hover:text-brand-700 rounded-lg font-medium text-sm transition">
             <i data-feather="check-square" class="w-4 h-4"></i> Pilih Tema & Dosen Tema
           </button>
-          <!-- AJUKAN JUDUL (DISABLED) -->
           <button disabled class="w-full flex items-center justify-between px-3 py-2.5 text-slate-400 bg-slate-100 rounded-lg font-medium text-sm cursor-not-allowed opacity-60" title="Fitur belum dibuka">
             <div class="flex items-center gap-3">
               <i data-feather="file-plus" class="w-4 h-4"></i> Ajukan Judul Baru
@@ -289,15 +287,14 @@
           </div>
         </section>
 
-        <!-- SUPERADMIN: PEMBUATAN USER & LUPA PASSWORD + BULK UPLOAD CSV + DAFTAR USER -->
+        <!-- SUPERADMIN: PEMBUATAN USER -->
         <section id="page-manage-users" class="page-view space-y-6 hidden">
           <div>
-            <h3 class="text-lg font-bold text-slate-800">Manajemen Akun Mahasiswa (Pembuatan & Reset Password)</h3>
-            <p class="text-xs text-slate-500">Superadmin dapat membuat akun baru untuk setiap mahasiswa secara satuan maupun massal via CSV serta mengelola/menghapus akun terdaftar.</p>
+            <h3 class="text-lg font-bold text-slate-800">Manajemen Akun Mahasiswa</h3>
+            <p class="text-xs text-slate-500">Superadmin dapat membuat akun baru untuk setiap mahasiswa secara satuan maupun massal via CSV.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Form Satuan -->
             <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
               <h4 class="text-sm font-bold text-slate-800 mb-4">Buat Akun Mahasiswa Baru</h4>
               <form onsubmit="handleCreateUser(event)" class="space-y-4">
@@ -306,11 +303,11 @@
                   <input type="text" id="newStudentName" required placeholder="Contoh: Siska Amelia" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">NIM (Nomor Induk Mahasiswa)</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">NIM</label>
                   <input type="text" id="newStudentNIM" required placeholder="Contoh: P17321231001" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
-                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Mahasiswa (Untuk Login Firebase)</label>
+                  <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email Mahasiswa</label>
                   <input type="email" id="newStudentEmail" required placeholder="mahasiswa@simarta.ac.id" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
                 <div>
@@ -321,7 +318,6 @@
               </form>
             </div>
 
-            <!-- Form Bulk Upload CSV -->
             <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm flex flex-col justify-between">
               <div>
                 <h4 class="text-sm font-bold text-slate-800 mb-2">Bulk Upload Mahasiswa (CSV)</h4>
@@ -334,31 +330,24 @@
             </div>
           </div>
 
-          <!-- TABEL DAFTAR USER TERDAFTAR + SEARCH + SORTING -->
           <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
             <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h4 class="font-bold text-sm text-slate-800">Daftar Akun Mahasiswa Terdaftar</h4>
-                <p class="text-xs text-slate-500">Total data akun mahasiswa terhubung di sistem Firestore: <span id="studentTotalCount" class="font-bold text-brand-700">0</span></p>
+                <p class="text-xs text-slate-500">Total data akun: <span id="studentTotalCount" class="font-bold text-brand-700">0</span></p>
               </div>
 
-              <!-- CONTROLS: SEARCH & SORT -->
               <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <!-- Search Bar -->
                 <div class="relative flex-1 md:w-64">
                   <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                     <i data-feather="search" class="w-3.5 h-3.5"></i>
                   </span>
                   <input type="text" id="studentSearchInput" onkeyup="filterStudentTable()" placeholder="Cari Nama, NIM, atau Email..." class="w-full pl-8 pr-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
                 </div>
-
-                <!-- Tombol Sortir -->
                 <button onclick="toggleStudentSort()" title="Urutkan Nama" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0">
                   <i data-feather="arrow-up-down" class="w-3.5 h-3.5"></i>
                   <span id="sortDirectionLabel">A - Z</span>
                 </button>
-
-                <!-- Tombol Hapus Semua -->
                 <button onclick="clearAllStudents()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1 shrink-0">
                   <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Hapus Semua
                 </button>
@@ -379,35 +368,23 @@
               </table>
             </div>
           </div>
-
-          <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
-            <h4 class="text-sm font-bold text-slate-800 mb-4">Fitur Lupa Password / Reset Sandi Cepat</h4>
-            <div class="flex flex-col sm:flex-row gap-3 max-w-xl">
-              <input type="email" id="resetEmailInput" placeholder="Masukkan email mahasiswa untuk reset password..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <button onclick="handleSendPasswordReset()" class="bg-amber-500 hover:bg-amber-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Kirim Link Reset</button>
-            </div>
-          </div>
         </section>
 
-        <!-- KONFIRMASI & MANAJEMEN TEMA MAHASISWA + SEARCH & SORT -->
+        <!-- KONFIRMASI & MANAJEMEN TEMA MAHASISWA -->
         <section id="page-confirm-topics" class="page-view space-y-6 hidden">
           <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h3 class="text-lg font-bold text-slate-800">Konfirmasi & Kontrol Tema Mahasiswa</h3>
-              <p class="text-xs text-slate-500">Superadmin dapat menyetujui, menolak, atau membuka kunci (unlock) pilihan tema mahasiswa secara real-time.</p>
+              <p class="text-xs text-slate-500">Superadmin dapat menyetujui, menolak, atau membuka kunci pilihan tema mahasiswa secara real-time.</p>
             </div>
 
-            <!-- CONTROLS: SEARCH & SORT KONFIRMASI TEMA -->
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-              <!-- Search Bar -->
               <div class="relative flex-1 md:w-64">
                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                   <i data-feather="search" class="w-3.5 h-3.5"></i>
                 </span>
                 <input type="text" id="confirmTopicSearchInput" onkeyup="filterConfirmTopicTable()" placeholder="Cari Nama, NIM, PA, Tema..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-brand-500">
               </div>
-
-              <!-- Tombol Sortir -->
               <button onclick="toggleConfirmTopicSort()" title="Urutkan Nama" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0">
                 <i data-feather="arrow-up-down" class="w-3.5 h-3.5"></i>
                 <span id="confirmSortDirectionLabel">A - Z</span>
@@ -433,51 +410,39 @@
           </div>
         </section>
 
-        <!-- SUPERADMIN: KELOLA MASTER TEMA SKRIPSI -->
+        <!-- SUPERADMIN: KELOLA MASTER TEMA -->
         <section id="page-manage-topics" class="page-view space-y-6 hidden">
           <div class="flex justify-between items-center">
             <div>
-              <h3 class="text-lg font-bold text-slate-800">Konfigurasi Master Tema Skripsi</h3>
-              <p class="text-xs text-slate-500">Kelola daftar tema beserta batas maksimal (kuota) pemilihan mahasiswa.</p>
+              <h3 class="text-lg font-bold text-slate-800">Kelola Master Tema & Dosen Pembimbing Tema</h3>
+              <p class="text-xs text-slate-500">Atur batas kuota keseluruhan tema DAN kuota spesifik masing-masing dosen pembimbing.</p>
             </div>
             <button onclick="exportTopicRekap()" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow">
               <i data-feather="download" class="w-4 h-4"></i> Tarik Rekap Pilihan Tema (CSV)
             </button>
           </div>
 
+          <!-- Form Tambah Tema Baru -->
           <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-            <h4 class="text-sm font-bold text-slate-800 mb-3">Tambah Tema Baru</h4>
+            <h4 class="text-sm font-bold text-slate-800 mb-3">Tambah Master Tema Skripsi Baru</h4>
             <form onsubmit="addTopic(event)" class="flex flex-col sm:flex-row gap-3">
-              <input type="text" id="newTopicName" required placeholder="Nama Tema (misal: INC)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <input type="number" id="newTopicQuota" required min="1" placeholder="Kuota (Maksimal)" class="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
-              <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition">Simpan Tema</button>
+              <input type="text" id="newTopicName" required placeholder="Nama Tema (contoh: INC, PNC, BBL)..." class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <input type="number" id="newTopicMaxQuota" required min="1" placeholder="Kuota Total Tema" class="w-full sm:w-48 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white font-bold px-5 py-2 rounded-lg text-sm transition">Simpan Tema</button>
             </form>
           </div>
 
-          <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
-                  <th class="py-3 px-4">Nama Tema Proposal/Skripsi</th>
-                  <th class="py-3 px-4 text-center">Batas Maksimal (Kuota)</th>
-                  <th class="py-3 px-4 text-center">Terpakai</th>
-                  <th class="py-3 px-4 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="topicTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
-            </table>
-          </div>
+          <div id="topicCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
         </section>
 
         <!-- SUPERADMIN: MASTER DATA DOSEN -->
         <section id="page-manage-lecturers" class="page-view space-y-6 hidden">
           <div>
             <h3 class="text-lg font-bold text-slate-800">Master Data Dosen</h3>
-            <p class="text-xs text-slate-500">Input nama-nama dosen secara satuan atau sekaligus banyak (bulk upload CSV) agar dapat dipilih mahasiswa.</p>
+            <p class="text-xs text-slate-500">Input nama-nama dosen secara satuan atau sekaligus banyak (bulk upload CSV).</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Form Satuan -->
             <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
               <h4 class="text-sm font-bold text-slate-800 mb-3">Input Dosen Baru (Satuan)</h4>
               <form onsubmit="addLecturer(event)" class="space-y-3">
@@ -486,7 +451,6 @@
               </form>
             </div>
 
-            <!-- Form Bulk Upload Dosen CSV -->
             <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm flex flex-col justify-between">
               <div>
                 <h4 class="text-sm font-bold text-slate-800 mb-2">Bulk Upload Dosen (CSV)</h4>
@@ -537,7 +501,6 @@
 
         <!-- MAHASISWA: DASHBOARD SAYA -->
         <section id="page-dashboard-user" class="page-view space-y-6 hidden">
-          <!-- BANNER USER DIJAMIN PERMANEN DI SINI -->
           <div id="userStatusBanner" class="p-6 rounded-2xl bg-brand-50 border border-brand-200 text-brand-800 shadow-sm transition-all">
             <h3 id="bannerTitle" class="text-xl font-bold">Dashboard Mahasiswa</h3>
             <p id="bannerSub" class="text-xs mt-1">Status Tema Saat Ini: <b id="bannerStatusText">NONE</b></p>
@@ -561,7 +524,6 @@
                 <h3 class="font-bold text-slate-800 text-base">Riwayat Usulan Judul</h3>
                 <p class="text-xs text-slate-500">Daftar usulan judul eksklusif akun Anda.</p>
               </div>
-              <!-- BUTTON AJUKAN JUDUL (DISABLED DI DASHBOARD) -->
               <button disabled class="bg-slate-200 text-slate-400 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 cursor-not-allowed opacity-75" title="Pengajuan judul baru belum dibuka">
                 <i data-feather="lock" class="w-3.5 h-3.5"></i> Ajukan Judul Baru (Belum Dibuka)
               </button>
@@ -587,62 +549,46 @@
         <!-- MAHASISWA: PILIH TEMA SKRIPSI & DOSEN TEMA -->
         <section id="page-select-topic" class="page-view space-y-6 hidden">
           <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm max-w-2xl mx-auto space-y-6">
-            <h3 class="font-bold text-slate-800 text-lg border-b pb-3">Pemilihan Tema Proposal & Dosen Tema</h3>
+            <h3 class="font-bold text-slate-800 text-lg border-b pb-3">Pemilihan Tema & Dosen Pembimbing Tema</h3>
 
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h4 class="text-xs font-bold text-slate-700 uppercase mb-2">1. Dosen Tema</h4>
-              
-              <div id="paSelectionForm" class="space-y-3">
-                <select id="userPADropdown" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                  <option value="">-- Pilih Dosen Tema --</option>
+            <!-- Form Pemilihan -->
+            <div id="topicSelectionContainer" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">1. Pilih Tema Skripsi</label>
+                <select id="userTopicDropdown" onchange="handleTopicDropdownChange()" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                  <option value="">-- Pilih Tema Proposal/Skripsi --</option>
                 </select>
-                <button onclick="handleSavePA()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg text-xs shadow">
-                  Simpan Pilihan Dosen Tema
-                </button>
               </div>
 
-              <div id="paSelectedMsg" class="hidden flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                <div class="flex items-center gap-2">
-                  <i data-feather="check-circle" class="w-5 h-5 text-emerald-600"></i>
-                  <div>
-                    <p class="text-xs text-emerald-800 font-semibold">Dosen Tema Terpilih:</p>
-                    <p id="paSelectedName" class="text-sm font-bold text-emerald-900"></p>
-                  </div>
-                </div>
-                <button onclick="enableEditPA()" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 px-3 py-1.5 rounded-lg font-bold">Ubah</button>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">2. Pilih Dosen Pembimbing Tema</label>
+                <select id="userPADropdown" disabled class="w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none cursor-not-allowed">
+                  <option value="">-- Pilih Tema Terlebih Dahulu --</option>
+                </select>
+              </div>
+
+              <button id="btnSubmitTopic" onclick="handleSaveTopicAndDosen()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
+                <span>Kunci & Ajukan Pilihan Tema</span>
+              </button>
+            </div>
+
+            <!-- Tampilan PENDING -->
+            <div id="topicPendingMsg" class="hidden p-4 bg-slate-100 border border-slate-300 rounded-xl flex items-start gap-3 text-slate-800 shadow-inner">
+              <i data-feather="lock" class="w-5 h-5 text-slate-600 mt-0.5 shrink-0"></i>
+              <div class="w-full">
+                <span class="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Terkunci (Menunggu Persetujuan Admin)</span>
+                <p class="text-xs text-slate-600 font-semibold mt-2">Tema Terpilih: <b id="topicPendingName" class="text-slate-900 text-sm"></b></p>
+                <p class="text-xs text-slate-600 font-semibold mt-1">Dosen Tema: <b id="dosenPendingName" class="text-brand-700 text-sm"></b></p>
               </div>
             </div>
 
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <h4 class="text-xs font-bold text-slate-700 uppercase mb-2">2. Tema Proposal / Skripsi</h4>
-              
-              <div id="topicSelectionForm" class="space-y-3">
-                <select id="userTopicDropdown" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                  <option value="">-- Pilih Tema Proposal/Skripsi --</option>
-                </select>
-                <button onclick="handleSaveTopic()" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-2 rounded-lg text-xs shadow">
-                  Kunci & Ajukan Tema
-                </button>
-              </div>
-
-              <div id="topicPendingMsg" class="hidden p-4 bg-slate-300 border border-slate-400 rounded-xl flex items-start gap-3 text-slate-800 shadow-inner">
-                <i data-feather="lock" class="w-5 h-5 text-slate-600 mt-0.5 shrink-0"></i>
-                <div class="w-full">
-                  <div class="flex justify-between items-center">
-                    <span class="bg-slate-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Terkunci (Menunggu Persetujuan Admin)</span>
-                  </div>
-                  <p class="text-xs text-slate-700 font-semibold mt-2">Tema Terpilih:</p>
-                  <p id="topicPendingName" class="text-base font-extrabold text-slate-900"></p>
-                </div>
-              </div>
-
-              <div id="topicApprovedMsg" class="hidden p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-start gap-3 text-emerald-900 shadow-sm">
-                <i data-feather="check-circle" class="w-5 h-5 text-emerald-600 mt-0.5 shrink-0"></i>
-                <div class="w-full">
-                  <span class="bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Disetujui Oleh Superadmin</span>
-                  <p class="text-xs text-emerald-700 font-semibold mt-2">Tema Resmi Anda:</p>
-                  <p id="topicApprovedName" class="text-base font-extrabold text-emerald-900"></p>
-                </div>
+            <!-- Tampilan APPROVED -->
+            <div id="topicApprovedMsg" class="hidden p-4 bg-emerald-50 border border-emerald-300 rounded-xl flex items-start gap-3 text-emerald-900 shadow-sm">
+              <i data-feather="check-circle" class="w-5 h-5 text-emerald-600 mt-0.5 shrink-0"></i>
+              <div class="w-full">
+                <span class="bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Disetujui Oleh Superadmin</span>
+                <p class="text-xs text-emerald-700 font-semibold mt-2">Tema Resmi: <b id="topicApprovedName" class="text-emerald-950 text-sm"></b></p>
+                <p class="text-xs text-emerald-700 font-semibold mt-1">Dosen Pembimbing Tema: <b id="dosenApprovedName" class="text-emerald-950 text-sm"></b></p>
               </div>
             </div>
           </div>
@@ -718,29 +664,6 @@
 
       </div>
     </main>
-  </div>
-
-  <!-- MODAL SEARCH PUBLIK -->
-  <div id="publicSearchModal" class="fixed inset-0 bg-slate-600/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative border border-slate-200 max-h-[85vh] flex flex-col">
-      <button onclick="closePublicModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
-        <i data-feather="x" class="w-5 h-5"></i>
-      </button>
-
-      <div class="mb-4">
-        <span class="text-xs font-bold text-brand-600 uppercase tracking-wider">Hasil Pencarian Repositori</span>
-        <h3 class="text-lg font-bold text-slate-800 mt-1" id="searchQueryTitle">Pencarian: "..."</h3>
-      </div>
-
-      <div id="searchResultsList" class="overflow-y-auto space-y-3 flex-1 pr-1"></div>
-
-      <div class="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center bg-white">
-        <p class="text-xs text-slate-500">Ingin mengajukan judul ini?</p>
-        <button onclick="closePublicModal(); openLoginModal();" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition">
-          Login SIMARTA
-        </button>
-      </div>
-    </div>
   </div>
 
   <!-- SCRIPT UTAMA SISTEM -->
@@ -841,11 +764,7 @@
         document.getElementById('loginPassword').value = '';
         Swal.fire({ icon: 'success', title: 'Login Berhasil', timer: 1500, showConfirmButton: false });
       } catch (error) {
-        console.error("Login Error:", error);
         let errorMsg = "Email atau password yang Anda masukkan salah.";
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-          errorMsg = "Email atau password salah. Silakan periksa kembali.";
-        }
         Swal.fire({ icon: 'error', title: 'Gagal Login', text: errorMsg });
       } finally {
         btn.disabled = false;
@@ -939,7 +858,6 @@
               await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), studentData);
               successCount++;
             } catch (err) {
-              console.error(`Gagal mendaftarkan ${email}:`, err);
               failCount++;
             }
           } else {
@@ -1017,139 +935,6 @@
       }
     }
 
-    async function handleBulkUploadLecturers() {
-      const fileInput = document.getElementById('csvLecturerInput');
-      if (!fileInput.files.length) {
-        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV dosen terlebih dahulu.' });
-        return;
-      }
-
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-
-      reader.onload = async function(e) {
-        const text = e.target.result;
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        
-        if (lines.length === 0) {
-          Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV dosen kosong.' });
-          return;
-        }
-
-        Swal.fire({
-          title: 'Mengunggah Data Dosen...',
-          text: 'Mohon tunggu sebentar.',
-          allowOutsideClick: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
-
-        let count = 0;
-        for (let i = 0; i < lines.length; i++) {
-          let dosenName = lines[i].replace(/["']/g, '').trim();
-
-          if (dosenName && dosenName.toLowerCase() !== 'nama_dosen' && dosenName.toLowerCase() !== 'nama') {
-            try {
-              const docId = Date.now().toString() + '_' + i;
-              await window.fbSetDoc(window.fbDoc(window.firebaseDb, "lecturers", docId), { name: dosenName });
-              count++;
-            } catch(err) {
-              console.error(err);
-            }
-          }
-        }
-
-        Swal.fire({ icon: 'success', title: 'Bulk Upload Dosen Berhasil!', text: `${count} data dosen berhasil ditambahkan secara rapi.` });
-        fileInput.value = '';
-      };
-      reader.readAsText(file);
-    }
-
-    async function handleBulkUploadRepositories() {
-      const fileInput = document.getElementById('csvRepoInput');
-      if (!fileInput.files.length) {
-        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV judul repositori terlebih dahulu.' });
-        return;
-      }
-
-      const file = fileInput.files[0];
-      const reader = new FileReader();
-
-      reader.onload = async function(e) {
-        const text = e.target.result;
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        
-        if (lines.length === 0) {
-          Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV kosong.' });
-          return;
-        }
-
-        Swal.fire({
-          title: 'Mengunggah Master Judul...',
-          text: 'Proses kilat mengunggah ratusan judul sekaligus.',
-          allowOutsideClick: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
-
-        try {
-          let batch = window.fbWriteBatch(window.firebaseDb);
-          let count = 0;
-          let batchCounter = 0;
-
-          for (let i = 0; i < lines.length; i++) {
-            let judul = lines[i].replace(/["']/g, '').trim();
-
-            if (judul && judul.toLowerCase() !== 'judul' && judul.toLowerCase() !== 'title') {
-              const uniqueId = Date.now().toString() + '_' + i;
-              const docRef = window.fbDoc(window.firebaseDb, "repositories", uniqueId);
-              
-              batch.set(docRef, { title: judul });
-              count++;
-              batchCounter++;
-
-              if (batchCounter === 450) {
-                await batch.commit();
-                batch = window.fbWriteBatch(window.firebaseDb);
-                batchCounter = 0;
-              }
-            }
-          }
-
-          if (batchCounter > 0) {
-            await batch.commit();
-          }
-
-          Swal.fire({ 
-            icon: 'success', 
-            title: 'Bulk Upload Judul Selesai!', 
-            text: `Berhasil menambahkan ${count} judul skripsi ke database repositori.` 
-          });
-          fileInput.value = '';
-
-        } catch (err) {
-          console.error(err);
-          Swal.fire({ icon: 'error', title: 'Gagal Upload', text: err.message });
-        }
-      };
-
-      reader.readAsText(file);
-    }
-
-    async function handleSendPasswordReset() {
-      const email = document.getElementById('resetEmailInput').value.trim();
-      if (!email) {
-        Swal.fire({ icon: 'warning', title: 'Masukkan Email', text: 'Harap isi email mahasiswa yang ingin direset sandinya.' });
-        return;
-      }
-
-      try {
-        await window.fbResetPassword(window.firebaseAuth, email);
-        Swal.fire({ icon: 'success', title: 'Link Terkirim!', text: `Email instruksi reset password telah dikirim ke ${email}.` });
-        document.getElementById('resetEmailInput').value = '';
-      } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Gagal Mengirim Reset', text: error.message });
-      }
-    }
-
     function loginAsRole(role) {
       document.getElementById('view-landing').classList.add('hidden');
       document.getElementById('view-app').classList.remove('hidden');
@@ -1173,11 +958,7 @@
         document.getElementById('userRoleBadge').innerText = 'NIM: ' + displayNIM;
         document.getElementById('userAvatar').innerText = displayNama.substring(0, 2).toUpperCase();
         document.getElementById('roleDisplayBadge').innerText = 'Mahasiswa / User';
-        
-        const userFormIdentity = document.getElementById('userFormIdentity');
-        if (userFormIdentity) userFormIdentity.value = `${displayNama} (${displayNIM})`;
 
-        populatePADropdown();
         populateTopicDropdown();
         checkStudentTopicState();
         renderUserDashboard();
@@ -1200,11 +981,7 @@
         students = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          students.push({ 
-            id: docSnap.id, 
-            uid: docSnap.id, 
-            ...data 
-          });
+          students.push({ id: docSnap.id, uid: docSnap.id, ...data });
 
           if (currentUser && currentUser.role === 'user' && docSnap.id === currentUser.uid) {
             studentProfile = data;
@@ -1215,6 +992,7 @@
         renderConfirmTopicsTable();
         renderStudentUserTable();
         renderTopics();
+        populateTopicDropdown();
       });
 
       window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "topics"), (snapshot) => {
@@ -1232,7 +1010,7 @@
           lecturers.push({ id: docSnap.id, name: docSnap.data().name });
         });
         renderLecturers();
-        populatePADropdown();
+        renderTopics();
       });
 
       window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "repositories"), (snapshot) => {
@@ -1267,7 +1045,7 @@
       if (countDisplay) countDisplay.innerText = students.length;
 
       if (students.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Belum ada akun mahasiswa yang terdaftar di Firestore.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Belum ada akun mahasiswa yang terdaftar.</td></tr>`;
         return;
       }
 
@@ -1286,11 +1064,6 @@
         const nameB = (b.nama || b.identitas || '').toLowerCase();
         return studentSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-400">Tidak ada mahasiswa yang cocok dengan pencarian "${searchKeyword}".</td></tr>`;
-        return;
-      }
 
       filtered.forEach(st => {
         const name = st.nama || st.identitas || 'Mahasiswa';
@@ -1348,11 +1121,6 @@
         return confirmTopicSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
       });
 
-      if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-400">Tidak ada data tema yang cocok dengan pencarian "${searchKeyword}".</td></tr>`;
-        return;
-      }
-
       filtered.forEach(st => {
         const displayName = st.nama || st.identitas || 'Mahasiswa';
         tbody.innerHTML += `
@@ -1378,20 +1146,157 @@
       renderConfirmTopicsTable();
     }
 
+    // KELOLA TEMA (SUPERADMIN)
     async function addTopic(e) {
       e.preventDefault();
       const name = document.getElementById('newTopicName').value.trim();
-      const quota = parseInt(document.getElementById('newTopicQuota').value);
-      if (name && quota > 0) {
-        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "topics", name), { name: name, maxQuota: quota });
+      const maxQuota = parseInt(document.getElementById('newTopicMaxQuota').value);
+
+      if (name && maxQuota > 0) {
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "topics", name), { 
+          name: name,
+          maxQuota: maxQuota,
+          topicLecturers: [] 
+        });
         document.getElementById('newTopicName').value = '';
-        document.getElementById('newTopicQuota').value = '';
+        document.getElementById('newTopicMaxQuota').value = '';
         Swal.fire({ icon: 'success', title: 'Tema Ditambahkan!', timer: 1500, showConfirmButton: false });
       }
     }
 
     async function removeTopic(topicId) {
-      await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "topics", topicId));
+      const confirm = await Swal.fire({
+        title: `Hapus Tema ${topicId}?`,
+        text: "Seluruh konfigurasi dosen pembimbing pada tema ini akan terhapus.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        confirmButtonText: 'Ya, Hapus Tema!'
+      });
+
+      if (confirm.isConfirmed) {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "topics", topicId));
+      }
+    }
+
+    async function addLecturerToTopic(topicId) {
+      const selectElem = document.getElementById(`selectLecturer_${topicId}`);
+      const quotaInput = document.getElementById(`quotaLecturer_${topicId}`);
+      const lecturerName = selectElem ? selectElem.value : '';
+      const quota = parseInt(quotaInput ? quotaInput.value : 0);
+
+      if (!lecturerName || quota <= 0) {
+        Swal.fire({ icon: 'warning', title: 'Pilih Dosen & Kuota Valid', text: 'Pilih nama dosen dan tentukan kuota minimal 1.' });
+        return;
+      }
+
+      const targetTopic = topics.find(t => t.id === topicId);
+      let list = targetTopic.topicLecturers || [];
+
+      if (list.some(l => l.name === lecturerName)) {
+        Swal.fire({ icon: 'error', title: 'Dosen Sudah Ada', text: `${lecturerName} sudah menjadi dosen pembimbing di tema ini.` });
+        return;
+      }
+
+      list.push({ name: lecturerName, quota: quota });
+      await window.fbUpdateDoc(window.fbDoc(window.firebaseDb, "topics", topicId), { topicLecturers: list });
+      Swal.fire({ icon: 'success', title: 'Dosen Berhasil Ditambahkan ke Tema!', timer: 1200, showConfirmButton: false });
+    }
+
+    async function removeLecturerFromTopic(topicId, lecturerName) {
+      const targetTopic = topics.find(t => t.id === topicId);
+      let list = targetTopic.topicLecturers || [];
+      list = list.filter(l => l.name !== lecturerName);
+
+      await window.fbUpdateDoc(window.fbDoc(window.firebaseDb, "topics", topicId), { topicLecturers: list });
+    }
+
+    function renderTopics() {
+      const container = document.getElementById('topicCardsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (topics.length === 0) {
+        container.innerHTML = `<div class="col-span-2 text-center py-8 text-slate-400 bg-white border rounded-xl">Belum ada master tema. Silakan tambahkan tema baru di atas.</div>`;
+        return;
+      }
+
+      topics.forEach(topic => {
+        const topicLecturers = topic.topicLecturers || [];
+        const totalTopicUsed = students.filter(s => s.selectedTopic === topic.name).length;
+        const topicMaxQuota = topic.maxQuota || 10;
+
+        let lecturersTableRows = '';
+        if (topicLecturers.length === 0) {
+          lecturersTableRows = `<tr><td colspan="4" class="text-center py-3 text-slate-400 text-xs">Belum ada dosen pembimbing di tema ini.</td></tr>`;
+        } else {
+          topicLecturers.forEach(tl => {
+            const usedCount = students.filter(s => s.selectedTopic === topic.name && s.selectedPA === tl.name).length;
+
+            lecturersTableRows += `
+              <tr class="hover:bg-slate-50 text-xs">
+                <td class="py-2.5 px-3 font-semibold text-slate-800">${tl.name}</td>
+                <td class="py-2.5 px-3 text-center font-bold text-slate-700">${tl.quota}</td>
+                <td class="py-2.5 px-3 text-center font-bold ${usedCount >= tl.quota ? 'text-rose-600' : 'text-brand-600'}">${usedCount} terpakai</td>
+                <td class="py-2.5 px-3 text-center">
+                  <button onclick="removeLecturerFromTopic('${topic.id}', '${tl.name}')" class="text-rose-500 hover:underline font-semibold">Hapus</button>
+                </td>
+              </tr>
+            `;
+          });
+        }
+
+        let dosenOptions = `<option value="">-- Pilih Dosen Pembimbing --</option>`;
+        lecturers.forEach(l => {
+          dosenOptions += `<option value="${l.name}">${l.name}</option>`;
+        });
+
+        container.innerHTML += `
+          <div class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start border-b pb-3 mb-3">
+                <div>
+                  <h4 class="font-bold text-brand-700 text-lg">${topic.name}</h4>
+                  <p class="text-xs font-semibold ${totalTopicUsed >= topicMaxQuota ? 'text-rose-600' : 'text-slate-500'}">
+                    Kuota Total Tema: <b>${totalTopicUsed}/${topicMaxQuota} Mahasiswa</b>
+                  </p>
+                </div>
+                <button onclick="removeTopic('${topic.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-bold flex items-center gap-1 shrink-0">
+                  <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Hapus Tema
+                </button>
+              </div>
+
+              <div class="overflow-x-auto border border-slate-100 rounded-lg mb-4">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="bg-slate-100/70 text-slate-500 uppercase text-[10px] font-bold">
+                      <th class="py-2 px-3">Dosen Pembimbing</th>
+                      <th class="py-2 px-3 text-center">Kuota Dosen</th>
+                      <th class="py-2 px-3 text-center">Terpakai</th>
+                      <th class="py-2 px-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100">
+                    ${lecturersTableRows}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">+ Tambah Dosen & Kuota di Tema Ini</span>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <select id="selectLecturer_${topic.id}" class="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none">
+                  ${dosenOptions}
+                </select>
+                <input type="number" id="quotaLecturer_${topic.id}" min="1" placeholder="Kuota" class="w-full sm:w-20 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs focus:outline-none">
+                <button onclick="addLecturerToTopic('${topic.id}')" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm">Simpan</button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      feather.replace();
     }
 
     async function addLecturer(e) {
@@ -1433,89 +1338,6 @@
       }
     }
 
-    async function addRepository(e) {
-      e.preventDefault();
-      const input = document.getElementById('newRepoTitle');
-      const val = input.value.trim();
-      if (val) {
-        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "repositories", Date.now().toString()), { title: val });
-        input.value = '';
-        Swal.fire({ icon: 'success', title: 'Judul Ditambahkan!', timer: 1200, showConfirmButton: false });
-      }
-    }
-
-    async function removeRepository(docId) {
-      try {
-        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "repositories", docId));
-        Swal.fire({ icon: 'success', title: 'Judul Dihapus', timer: 1000, showConfirmButton: false });
-      } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
-      }
-    }
-
-    async function clearAllRepositories() {
-      const confirm = await Swal.fire({
-        title: 'Kosongkan Seluruh Repositori Judul?',
-        text: `Terdapat ${repositories.length} judul yang akan dihapus dari database master!`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e11d48',
-        confirmButtonText: 'Ya, Hapus Semua Judul!'
-      });
-
-      if (confirm.isConfirmed) {
-        Swal.fire({
-          title: 'Menghapus Semua Judul...',
-          text: 'Mohon tunggu sebentar.',
-          allowOutsideClick: false,
-          didOpen: () => { Swal.showLoading(); }
-        });
-
-        try {
-          let batch = window.fbWriteBatch(window.firebaseDb);
-          let counter = 0;
-
-          for (let repo of repositories) {
-            batch.delete(window.fbDoc(window.firebaseDb, "repositories", repo.id));
-            counter++;
-
-            if (counter === 450) {
-              await batch.commit();
-              batch = window.fbWriteBatch(window.firebaseDb);
-              counter = 0;
-            }
-          }
-
-          if (counter > 0) {
-            await batch.commit();
-          }
-
-          Swal.fire({ icon: 'success', title: 'Repositori Berhasil Dikosongkan!' });
-        } catch (err) {
-          Swal.fire({ icon: 'error', title: 'Gagal Mengosongkan', text: err.message });
-        }
-      }
-    }
-
-    function renderTopics() {
-      const tbody = document.getElementById('topicTableBody');
-      if (!tbody) return;
-      tbody.innerHTML = '';
-      topics.forEach((topic) => {
-        const countUsed = students.filter(s => s.selectedTopic === topic.name && s.topicStatus === 'APPROVED').length;
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50">
-            <td class="py-3.5 px-4 font-bold text-slate-800">${topic.name}</td>
-            <td class="py-3.5 px-4 text-center font-semibold">${topic.maxQuota}x</td>
-            <td class="py-3.5 px-4 text-center font-semibold text-brand-600">${countUsed}x</td>
-            <td class="py-3.5 px-4 text-center">
-              <button onclick="removeTopic('${topic.name}')" class="text-rose-500 hover:text-rose-700 font-semibold text-xs">Hapus</button>
-            </td>
-          </tr>
-        `;
-      });
-    }
-
     function renderLecturers() {
       const list = document.getElementById('lecturerList');
       if (!list) return;
@@ -1530,102 +1352,179 @@
       });
     }
 
-    function renderRepositories() {
-      const list = document.getElementById('repoList');
-      if (!list) return;
-      list.innerHTML = '';
-      repositories.forEach((repo) => {
-        list.innerHTML += `
-          <li class="py-3 px-3 flex justify-between items-center gap-4 hover:bg-slate-50 rounded">
-            <span class="text-slate-700 text-xs leading-relaxed flex-1">${repo.title}</span>
-            <button onclick="removeRepository('${repo.id}')" class="text-xs text-rose-500 hover:text-rose-700 font-semibold shrink-0">Hapus</button>
-          </li>`;
-      });
-    }
-
-    function filterRepository() {
-      const keyword = document.getElementById('repoSearch').value.toLowerCase();
-      const list = document.getElementById('repoList');
-      const items = list.getElementsByTagName('li');
-      for (let i = 0; i < items.length; i++) {
-        const text = items[i].textContent || items[i].innerText;
-        if (text.toLowerCase().indexOf(keyword) > -1) {
-          items[i].style.display = "";
-        } else {
-          items[i].style.display = "none";
-        }
-      }
-    }
-
-    function populatePADropdown() {
-      const dropdown = document.getElementById('userPADropdown');
-      if (!dropdown) return;
-      dropdown.innerHTML = '<option value="">-- Pilih Dosen Tema --</option>';
-      lecturers.forEach(dosen => {
-        dropdown.innerHTML += `<option value="${dosen.name}">${dosen.name}</option>`;
-      });
-    }
-
     function populateTopicDropdown() {
       const dropdown = document.getElementById('userTopicDropdown');
       if (!dropdown) return;
       dropdown.innerHTML = '<option value="">-- Pilih Tema Proposal/Skripsi --</option>';
+
       topics.forEach(t => {
-        dropdown.innerHTML += `<option value="${t.name}">${t.name} (Maks Kuota: ${t.maxQuota})</option>`;
+        const totalUsed = students.filter(s => s.selectedTopic === t.name).length;
+        const maxQuota = t.maxQuota || 10;
+        const remaining = maxQuota - totalUsed;
+
+        if (remaining > 0) {
+          dropdown.innerHTML += `<option value="${t.name}">${t.name} (Sisa Kuota Tema: ${remaining}/${maxQuota})</option>`;
+        } else {
+          dropdown.innerHTML += `<option value="${t.name}" disabled class="text-slate-400 bg-slate-100">${t.name} (KUOTA TEMA PENUH)</option>`;
+        }
       });
     }
 
-    async function handleSavePA() {
-      const val = document.getElementById('userPADropdown').value;
-      if (!val) return;
-      studentProfile.selectedPA = val;
-      await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", currentUser.uid), studentProfile, { merge: true });
-      checkStudentTopicState();
-      renderUserDashboard();
-      Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Dosen Tema berhasil disimpan.', timer: 1500, showConfirmButton: false });
+    function handleTopicDropdownChange() {
+      const topicName = document.getElementById('userTopicDropdown').value;
+      const paDropdown = document.getElementById('userPADropdown');
+
+      if (!topicName) {
+        paDropdown.disabled = true;
+        paDropdown.className = "w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-lg text-sm cursor-not-allowed";
+        paDropdown.innerHTML = '<option value="">-- Pilih Tema Terlebih Dahulu --</option>';
+        return;
+      }
+
+      const selectedTopicObj = topics.find(t => t.name === topicName);
+      const topicLecturers = selectedTopicObj ? (selectedTopicObj.topicLecturers || []) : [];
+
+      if (topicLecturers.length === 0) {
+        paDropdown.disabled = true;
+        paDropdown.className = "w-full px-3 py-2.5 bg-slate-100 border border-slate-300 rounded-lg text-sm cursor-not-allowed";
+        paDropdown.innerHTML = '<option value="">-- Belum ada dosen pembimbing di tema ini --</option>';
+        return;
+      }
+
+      paDropdown.disabled = false;
+      paDropdown.className = "w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none";
+      paDropdown.innerHTML = '<option value="">-- Pilih Dosen Pembimbing Tema --</option>';
+
+      topicLecturers.forEach(tl => {
+        const usedCount = students.filter(s => s.selectedTopic === topicName && s.selectedPA === tl.name).length;
+        const remaining = tl.quota - usedCount;
+
+        if (remaining > 0) {
+          paDropdown.innerHTML += `<option value="${tl.name}">${tl.name} (Sisa Kuota Dosen: ${remaining}/${tl.quota})</option>`;
+        } else {
+          paDropdown.innerHTML += `<option value="${tl.name}" disabled class="text-slate-400 bg-slate-100">${tl.name} (KUOTA DOSEN PENUH)</option>`;
+        }
+      });
     }
 
-    function enableEditPA() {
-      document.getElementById('paSelectionForm').classList.remove('hidden');
-      document.getElementById('paSelectedMsg').classList.add('hidden');
-    }
+    // FUNGSI UTAMA PENANGANAN RACE CONDITION MENGGUNAKAN FIRESTORE TRANSACTION
+    async function handleSaveTopicAndDosen() {
+      const topicVal = document.getElementById('userTopicDropdown').value;
+      const paVal = document.getElementById('userPADropdown').value;
+      const btn = document.getElementById('btnSubmitTopic');
 
-    async function handleSaveTopic() {
-      const val = document.getElementById('userTopicDropdown').value;
-      if (!val) return;
+      if (!topicVal || !paVal) {
+        Swal.fire({ icon: 'warning', title: 'Lengkapi Pilihan', text: 'Harap pilih Tema dan Dosen Pembimbing Tema terlebih dahulu.' });
+        return;
+      }
 
-      studentProfile.selectedTopic = val;
-      studentProfile.topicStatus = 'PENDING';
-      await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", currentUser.uid), studentProfile, { merge: true });
-      checkStudentTopicState();
-      renderUserDashboard();
-      Swal.fire({ icon: 'info', title: 'Tema Terkunci & Diajukan', text: 'Tema Anda kini terkunci menunggu persetujuan Superadmin.', timer: 2000, showConfirmButton: false });
+      btn.disabled = true;
+      btn.innerHTML = `<span>Memproses Permintaan (Validasi Kuota Real-time)...</span>`;
+
+      try {
+        await window.fbRunTransaction(window.firebaseDb, async (transaction) => {
+          // 1. Ambil snapshot data Master Tema terkini dari server
+          const topicRef = window.fbDoc(window.firebaseDb, "topics", topicVal);
+          const topicDoc = await transaction.get(topicRef);
+
+          if (!topicDoc.exists()) {
+            throw "Tema tidak ditemukan di sistem!";
+          }
+
+          const topicData = topicDoc.data();
+          const maxQuota = topicData.maxQuota || 10;
+          const topicLecturers = topicData.topicLecturers || [];
+
+          // 2. Ambil snapshot seluruh data mahasiswa
+          const studentsColRef = window.fbCollection(window.firebaseDb, "students");
+          const studentsSnap = await window.fbGetDocs(studentsColRef);
+
+          let currentTopicCount = 0;
+          let currentLecturerCount = 0;
+
+          studentsSnap.forEach(sDoc => {
+            const sData = sDoc.data();
+            if (sData.selectedTopic === topicVal) {
+              currentTopicCount++;
+              if (sData.selectedPA === paVal) {
+                currentLecturerCount++;
+              }
+            }
+          });
+
+          // 3. Cek apakah Kuota Tema Total Penuh
+          if (currentTopicCount >= maxQuota) {
+            throw `Maaf, kuota total untuk tema "${topicVal}" baru saja Penuh! Silakan pilih tema lain.`;
+          }
+
+          // 4. Cek apakah Kuota Dosen Pilihan Penuh
+          const targetLecturerObj = topicLecturers.find(l => l.name === paVal);
+          if (!targetLecturerObj) {
+            throw "Dosen tidak terdaftar di tema ini!";
+          }
+
+          if (currentLecturerCount >= targetLecturerObj.quota) {
+            throw `Maaf, kuota pembimbing untuk ${paVal} pada tema "${topicVal}" baru saja Penuh! Silakan pilih dosen lain.`;
+          }
+
+          // 5. Jika SEMUA KUOTA AMAN -> Jalankan Transaksi Penulisan
+          const userRef = window.fbDoc(window.firebaseDb, "students", currentUser.uid);
+          transaction.set(userRef, {
+            selectedTopic: topicVal,
+            selectedPA: paVal,
+            topicStatus: 'PENDING'
+          }, { merge: true });
+        });
+
+        // Apabila sukses lewat dari Transaction
+        studentProfile.selectedTopic = topicVal;
+        studentProfile.selectedPA = paVal;
+        studentProfile.topicStatus = 'PENDING';
+
+        checkStudentTopicState();
+        renderUserDashboard();
+
+        Swal.fire({ 
+          icon: 'success', 
+          title: 'Berhasil Dikunci!', 
+          text: `Tema "${topicVal}" dengan Pembimbing ${paVal} telah berhasil diajukan!`,
+          timer: 2000, 
+          showConfirmButton: false 
+        });
+
+      } catch (err) {
+        console.error("Transaction Error:", err);
+        Swal.fire({ 
+          icon: 'error', 
+          title: 'Gagal Memilih Tema', 
+          text: (typeof err === 'string') ? err : "Terjadi persaingan kuota. Silakan coba pilih dosen/tema lain."
+        });
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Kunci & Ajukan Pilihan Tema</span>`;
+      }
     }
 
     function checkStudentTopicState() {
-      if (studentProfile.selectedPA) {
-        document.getElementById('paSelectionForm').classList.add('hidden');
-        document.getElementById('paSelectedMsg').classList.remove('hidden');
-        document.getElementById('paSelectedName').innerText = studentProfile.selectedPA;
-      }
-
-      const form = document.getElementById('topicSelectionForm');
+      const formBox = document.getElementById('topicSelectionContainer');
       const pendingBox = document.getElementById('topicPendingMsg');
       const approvedBox = document.getElementById('topicApprovedMsg');
 
-      if (!form) return;
-      form.classList.add('hidden');
+      if (!formBox) return;
+      formBox.classList.add('hidden');
       pendingBox.classList.add('hidden');
       approvedBox.classList.add('hidden');
 
       if (studentProfile.topicStatus === 'PENDING') {
         pendingBox.classList.remove('hidden');
         document.getElementById('topicPendingName').innerText = studentProfile.selectedTopic;
+        document.getElementById('dosenPendingName').innerText = studentProfile.selectedPA;
       } else if (studentProfile.topicStatus === 'APPROVED') {
         approvedBox.classList.remove('hidden');
         document.getElementById('topicApprovedName').innerText = studentProfile.selectedTopic;
+        document.getElementById('dosenApprovedName').innerText = studentProfile.selectedPA;
       } else {
-        form.classList.remove('hidden');
+        formBox.classList.remove('hidden');
       }
     }
 
@@ -1694,7 +1593,6 @@
       await window.fbUpdateDoc(window.fbDoc(window.firebaseDb, "submissions", subId), { status: newStatus });
     }
 
-    // FUNGSI RENDER DASHBOARD USER YANG DIPERBAIKI (AMAN DARI NULL/UNDEFINED)
     function renderUserDashboard() {
       const topicDisplay = document.getElementById('userSelectedTopicDisplay');
       const paDisplay = document.getElementById('userSelectedPADisplay');
@@ -1706,7 +1604,6 @@
 
       if (!topicDisplay) return;
 
-      // Ambil nama mahasiswa dengan fallback bertingkat
       let displayName = studentProfile.nama || studentProfile.identitas;
       if (!displayName && currentUser && currentUser.email) {
         displayName = currentUser.email.split('@')[0];
@@ -1715,15 +1612,12 @@
         displayName = "Mahasiswa";
       }
 
-      // Update Teks Banner
       if (bannerTitle) bannerTitle.innerText = `Dashboard Mahasiswa: ${displayName}`;
       if (bannerStatusText) bannerStatusText.innerText = studentProfile.topicStatus || 'NONE';
 
-      // Update Tampilan Tema & Dosen Tema
       topicDisplay.innerText = studentProfile.selectedTopic || "Belum Memilih Tema";
       if (paDisplay) paDisplay.innerText = studentProfile.selectedPA || "Belum Memilih Dosen Tema";
 
-      // Update Badge Status Tema
       if (topicBadge) {
         if (studentProfile.topicStatus === 'APPROVED') {
           topicBadge.innerHTML = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">Disetujui Admin</span>`;
@@ -1734,7 +1628,6 @@
         }
       }
 
-      // Render Riwayat Usulan Judul jika ada
       if (userHistoryBody) {
         userHistoryBody.innerHTML = '';
         submissions.filter(s => s.nim === studentProfile.nim).forEach(item => {
