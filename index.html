@@ -91,6 +91,27 @@
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
+  <!-- MAINTENANCE / COMING SOON PAGE -->
+  <div id="view-maintenance" class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-brand-900 text-white p-6 hidden z-[100] relative">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+      <div class="absolute -top-24 -right-24 w-96 h-96 bg-brand-400 rounded-full blur-3xl"></div>
+      <div class="absolute -bottom-24 -left-24 w-96 h-96 bg-kemenkesYellow-500 rounded-full blur-3xl"></div>
+    </div>
+    
+    <div class="bg-white/10 backdrop-blur-md border border-white/20 p-8 rounded-3xl shadow-2xl text-center max-w-lg relative z-10">
+      <div class="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+        <i data-feather="settings" class="w-10 h-10 text-white animate-[spin_4s_linear_infinite]"></i>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight mb-2">Sistem Sedang Dipersiapkan</h1>
+      <p class="text-brand-100 text-sm mb-6 leading-relaxed">
+        Platform SIMARTA saat ini sedang dalam mode pemeliharaan untuk persiapan <b>Pemilihan Tema Skripsi</b>. Silakan kembali pada jadwal yang telah ditentukan.
+      </p>
+      <div class="inline-block bg-white/10 px-4 py-2 rounded-lg border border-white/20">
+        <span class="text-xs font-bold uppercase tracking-widest text-kemenkesYellow-400">Status: Terkunci / Maintenance</span>
+      </div>
+    </div>
+  </div>
+
   <!-- LANDING PAGE -->
   <div id="view-landing" class="min-h-screen flex flex-col justify-between bg-gradient-to-b from-brand-50 via-white to-brand-50 text-slate-800">
     <header class="max-w-7xl w-full mx-auto px-6 py-6 flex items-center justify-between border-b border-brand-100">
@@ -725,7 +746,25 @@
       document.getElementById('loginModal').classList.add('hidden');
     }
 
+// ==========================================
+    // ⚙️ SAKELAR MAINTENANCE (UBAH DI SINI)
+    // ==========================================
+    // Ubah ke 'true' untuk mengunci web. 
+    // Ubah ke 'false' saat hari-H untuk membuka web.
+    const IS_UNDER_MAINTENANCE = true; 
+    // ==========================================
+
     window.addEventListener('DOMContentLoaded', () => {
+      // Cek apakah mode maintenance aktif
+      if (IS_UNDER_MAINTENANCE) {
+        document.getElementById('view-landing').classList.add('hidden');
+        document.getElementById('view-app').classList.add('hidden');
+        document.getElementById('view-maintenance').classList.remove('hidden');
+        feather.replace();
+        return; // Hentikan seluruh proses sistem (termasuk login)
+      }
+
+      // Jika tidak maintenance, jalankan sistem normal
       setTimeout(() => {
         if (window.fbOnAuthStateChanged) {
           window.fbOnAuthStateChanged(window.firebaseAuth, async (user) => {
@@ -735,22 +774,13 @@
                 loginAsRole('superadmin');
               } else {
                 currentUser = { role: 'user', uid: user.uid, email: user.email };
-                const docRef = window.fbDoc(window.firebaseDb, "students", user.uid);
-                const docSnap = await window.fbGetDoc(docRef);
+                const docSnap = await window.fbGetDoc(window.fbDoc(window.firebaseDb, "students", user.uid));
                 
                 if (docSnap.exists()) {
                   studentProfile = docSnap.data();
                 } else {
                   const fallbackName = user.email ? user.email.split('@')[0] : "Mahasiswa";
-                  studentProfile = {
-                    uid: user.uid,
-                    nim: fallbackName,
-                    nama: fallbackName,
-                    identitas: fallbackName,
-                    selectedTopic: "",
-                    topicStatus: "NONE",
-                    selectedPA: ""
-                  };
+                  studentProfile = { uid: user.uid, nim: fallbackName, nama: fallbackName, identitas: fallbackName, selectedTopic: "", topicStatus: "NONE", selectedPA: "" };
                 }
                 loginAsRole('user');
               }
@@ -763,6 +793,7 @@
       }, 500);
     });
 
+    
     async function handleLoginSubmit(e) {
       e.preventDefault();
       const email = document.getElementById('loginEmail').value.trim();
