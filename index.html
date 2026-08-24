@@ -1154,7 +1154,10 @@
 
     async function handleBulkUploadCSV() {
       const fileInput = document.getElementById('csvFileInput');
-      if (!fileInput.files.length) { Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV terlebih dahulu.' }); return; }
+      if (!fileInput.files.length) { 
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV terlebih dahulu.' }); 
+        return; 
+      }
 
       const file = fileInput.files[0];
       const reader = new FileReader();
@@ -1162,30 +1165,79 @@
       reader.onload = async function(e) {
         const text = e.target.result;
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        if (lines.length < 2) { Swal.fire({ icon: 'error', title: 'Format Salah', text: 'File CSV kosong atau tidak memiliki data baris.' }); return; }
+        
+        if (lines.length === 0) { 
+          Swal.fire({ icon: 'error', title: 'File Kosong', text: 'File CSV tidak berisi data.' }); 
+          return; 
+        }
 
-        const totalItems = lines.length - 1;
-        Swal.fire({ title: 'Sedang Mengunggah...', html: `Memproses data <b>0</b> dari <b>${totalItems}</b> mahasiswa...`, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        // 1. DETEKSI OTOMATIS PEMISAH (KOMA ATAU TITIK KOMA)
+        const delimiter = lines[0].includes(';') ? ';' : ',';
 
-        let successCount = 0; let failCount = 0;
+        // 2. DETEKSI OTOMATIS HEADER (Mencegah baris pertama terlewat)
+        let startIdx = 0;
+        if (lines[0].toLowerCase().includes('nama') || lines[0].toLowerCase().includes('name')) {
+          startIdx = 1;
+        }
 
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',').map(c => c.trim().replace(/["']/g, ''));
+        const totalItems = lines.length - startIdx;
+        
+        if (totalItems <= 0) {
+          Swal.fire({ icon: 'error', title: 'Data Kosong', text: 'Tidak ada data mahasiswa untuk diproses.' }); 
+          return;
+        }
+
+        Swal.fire({ 
+          title: 'Sedang Mengunggah...', 
+          html: `Memproses data <b>0</b> dari <b>${totalItems}</b> mahasiswa...`, 
+          allowOutsideClick: false, 
+          didOpen: () => { Swal.showLoading(); }
+        });
+
+        let successCount = 0; 
+        let failCount = 0;
+
+        for (let i = startIdx; i < lines.length; i++) {
+          // Memotong berdasarkan delimiter yang terdeteksi
+          const cols = lines[i].split(delimiter).map(c => c.trim().replace(/["']/g, ''));
+          
           if (cols.length >= 4) {
             const [nama, nim, email, password] = cols;
             try {
+              // Firebase akan membuat akun auth-nya
               const cred = await window.fbCreateUser(window.firebaseAuth, email, password);
               const uid = cred.user.uid;
-              await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), { uid: uid, nim: nim, nama: nama, identitas: nama, email: email, selectedTopic: "", topicStatus: "NONE", selectedPA: "" });
+              
+              // Lalu data detailnya disimpan ke database
+              await window.fbSetDoc(window.fbDoc(window.firebaseDb, "students", uid), { 
+                uid: uid, nim: nim, nama: nama, identitas: nama, email: email, selectedTopic: "", topicStatus: "NONE", selectedPA: "" 
+              });
               successCount++;
-            } catch (err) { failCount++; }
-          } else { failCount++; }
-          Swal.update({ html: `Memproses data <b>${i}</b> dari <b>${totalItems}</b> mahasiswa...` });
-          await delay(300);
+            } catch (err) { 
+              console.error("Gagal mendaftarkan:", email, err.message);
+              failCount++; 
+            }
+          } else { 
+            failCount++; 
+          }
+          Swal.update({ html: `Memproses data <b>${successCount}</b> dari <b>${totalItems}</b> mahasiswa...` });
         }
-        Swal.fire({ icon: 'success', title: 'Bulk Upload Selesai!', html: `Berhasil mendaftarkan: <b>${successCount}</b> akun.<br>Gagal/Terlewat: <b>${failCount}</b> akun.` });
+        
+        Swal.fire({ 
+          icon: 'success', 
+          title: 'Bulk Upload Selesai!', 
+          html: `Berhasil mendaftarkan: <b>${successCount}</b> akun.<br>Gagal/Terlewat: <b>${failCount}</b> akun.<br><br><span class="text-xs text-rose-600 font-bold">Memuat ulang sistem untuk mengamankan sesi Superadmin...</span>`,
+          showConfirmButton: false,
+          timer: 3500
+        }).then(() => {
+          // 3. MENCEGAH ERROR AUTO-LOGIN FIREBASE
+          // Kita muat ulang (refresh) halaman agar sesi Superadmin kembali normal
+          window.location.reload();
+        });
+        
         fileInput.value = '';
       };
+      
       reader.readAsText(file);
     }
 
