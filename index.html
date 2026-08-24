@@ -2014,6 +2014,9 @@
       const navLocked = document.getElementById('navBtnSubmitTitleLocked');
       const formView = document.getElementById('submitTitleFormContainer');
       const lockedView = document.getElementById('submitTitleLockedMessage');
+      
+      // 👇 DEKLARASI TOMBOL MOBILE DI SINI
+      const mobileSubmitBtn = document.getElementById('mobileNavSubmitBtn'); 
 
       // 1. Update Tombol di Layar Admin
       if (adminBtn) {
@@ -2024,7 +2027,7 @@
           adminBtn.innerHTML = `<i data-feather="unlock" class="w-4 h-4"></i> Buka Akses Pengajuan`;
           adminBtn.className = "bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-lg flex items-center gap-2 shadow transition";
         }
-        feather.replace();
+        if (window.feather) feather.replace();
       }
 
       // 2. Update Tampilan di Layar Mahasiswa
@@ -2033,11 +2036,17 @@
         if (navLocked) navLocked.classList.add('hidden');
         if (formView) formView.classList.remove('hidden');
         if (lockedView) lockedView.classList.add('hidden');
+        
+        // 👇 BUKA TOMBOL MOBILE JIKA DIAKTIFKAN
+        if (mobileSubmitBtn) mobileSubmitBtn.classList.remove('hidden'); 
       } else {
         if (navActive) navActive.classList.add('hidden');
         if (navLocked) navLocked.classList.remove('hidden');
         if (formView) formView.classList.add('hidden');
         if (lockedView) lockedView.classList.remove('hidden');
+        
+        // 👇 TUTUP TOMBOL MOBILE JIKA DINONAKTIFKAN
+        if (mobileSubmitBtn) mobileSubmitBtn.classList.add('hidden'); 
         
         // Jika menu ditutup admin tapi mahasiswa sedang buka halamannya, otomatis tendang ke Dashboard
         const submitPage = document.getElementById('page-submit-title');
