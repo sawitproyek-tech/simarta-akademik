@@ -295,12 +295,37 @@
 
     <!-- MAIN CONTENT -->
     <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
-      <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Sistem Akademik</h2>
-        <button onclick="logout()" class="md:hidden text-xs bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600">Logout</button>
-      </header>
+      
+      <!-- 📱 NAVBAR KHUSUS PONSEL (MUNCUL H DI HP, DISEMBUNYIKAN DI DESKTOP) -->
+      <div class="bg-white border-b border-slate-200 px-4 py-3 flex md:hidden items-center justify-between shadow-sm sticky top-0 z-30">
+        <div class="flex items-center gap-2">
+          <div class="bg-brand-500 p-1.5 rounded-lg text-white">
+            <i data-feather="shield-check" class="w-4 h-4"></i>
+          </div>
+          <span class="font-bold text-brand-700 text-sm">SIMARTA</span>
+        </div>
+        <!-- Tombol Pintas Menu Mobile -->
+        <div class="flex items-center gap-1.5 overflow-x-auto py-1">
+          <button onclick="switchPage('page-dashboard-user')" class="bg-brand-50 text-brand-700 hover:bg-brand-100 px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition">
+            Dashboard
+          </button>
+          <button onclick="switchPage('page-select-topic')" class="bg-brand-500 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition shadow-sm">
+            Pilih Tema
+          </button>
+          <button id="mobileNavSubmitBtn" onclick="switchPage('page-submit-title')" class="bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition hidden">
+            Ajukan Judul
+          </button>
+          <button onclick="logout()" class="bg-rose-50 text-rose-600 px-2 py-1 rounded-lg text-[11px] font-bold shrink-0">
+            Logout
+          </button>
+        </div>
+      </div>
 
-      <div class="p-6 max-w-7xl mx-auto w-full">
+      <!-- HEADER UTAMA YANG LAMA -->
+      <header class="bg-white border-b border-slate-200 px-6 py-4 hidden md:flex items-center justify-between">
+        <h2 id="pageTitle" class="text-xl font-bold text-slate-800">Sistem Akademik</h2>
+        <button onclick="logout()" class="text-xs bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600">Logout</button>
+      </header>
 
         <!-- 1. DASHBOARD SUPERADMIN: VERIFIKASI JUDUL -->
         <section id="page-dashboard-admin" class="page-view space-y-6 hidden">
