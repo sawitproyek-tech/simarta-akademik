@@ -932,13 +932,14 @@
         renderTopics();
       });
 
-      window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "repositories"), (snapshot) => {
-        repositories = [];
-        snapshot.forEach(docSnap => {
-          repositories.push({ id: docSnap.id, title: docSnap.data().title });
-        });
-        renderRepositories(); // Render untuk menu master repositori
-      });
+      // 4. Sinkronisasi Data Repositori
+      //window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "repositories"), (snapshot) => {
+        //repositories = [];
+        //snapshot.forEach(docSnap => {
+          //repositories.push({ id: docSnap.id, title: docSnap.data().title });
+        //});
+        //renderRepositories(); // Render untuk menu master repositori
+      //});
 
       window.fbOnSnapshot(window.fbCollection(window.firebaseDb, "submissions"), (snapshot) => {
         submissions = [];
