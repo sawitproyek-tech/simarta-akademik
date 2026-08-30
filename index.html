@@ -109,7 +109,8 @@
       <p class="text-brand-100 text-sm mb-6 leading-relaxed">
         Server Platform SIMARTA saat ini sedang Penuh dan dalam persiapan <b>Pemilihan Tema Skripsi</b>. Silakan kembali pada jadwal yang telah ditentukan.
       </p>
-      <div class="inline-block bg-white/10 px-4 py-2 rounded-lg border border-white/20">
+      <!-- Pintu Rahasia Admin -->
+      <div onclick="openLoginModal()" class="inline-block bg-white/10 px-4 py-2 rounded-lg border border-white/20 cursor-pointer hover:bg-white/20 transition">
         <span class="text-xs font-bold uppercase tracking-widest text-kemenkesYellow-400">Status: Terkunci / Maintenance</span>
       </div>
     </div>
@@ -797,27 +798,35 @@
     // ==========================================
 
     window.addEventListener('DOMContentLoaded', () => {
-      // Cek apakah mode maintenance aktif
+      // 1. Atur Tampilan Awal (Maintenance atau Landing)
       if (IS_UNDER_MAINTENANCE) {
         document.getElementById('view-landing').classList.add('hidden');
         document.getElementById('view-app').classList.add('hidden');
         document.getElementById('view-maintenance').classList.remove('hidden');
-        feather.replace();
-        return; // Hentikan seluruh proses sistem (termasuk login)
       }
 
-      // Jika tidak maintenance, jalankan sistem normal
+      // 2. Pantau Auth & Filter Admin vs Mahasiswa
       setTimeout(() => {
         if (window.fbOnAuthStateChanged) {
           window.fbOnAuthStateChanged(window.firebaseAuth, async (user) => {
             if (user) {
+              // JIKA ADMIN: Buka Gembok Maintenance
               if (user.email === "admin@simarta.ac.id" || user.email === "admin@admin.com") {
                 currentUser = { role: 'superadmin', nama: 'Admin Kaprodi', email: user.email };
+                document.getElementById('view-maintenance').classList.add('hidden'); // Singkirkan layar maintenance
                 loginAsRole('superadmin');
-              } else {
+                initFirestoreRealtimeSync();
+              } 
+              // JIKA MAHASISWA
+              else {
+                if (IS_UNDER_MAINTENANCE) {
+                  await window.fbSignOut(window.firebaseAuth); // Tendang paksa
+                  Swal.fire({ icon: 'warning', title: 'Sistem Terkunci', text: 'Sistem sedang maintenance. Silakan kembali nanti.' });
+                  return; 
+                }
+                
                 currentUser = { role: 'user', uid: user.uid, email: user.email };
                 const docSnap = await window.fbGetDoc(window.fbDoc(window.firebaseDb, "students", user.uid));
-                
                 if (docSnap.exists()) {
                   studentProfile = docSnap.data();
                 } else {
@@ -825,14 +834,15 @@
                   studentProfile = { uid: user.uid, nim: fallbackName, nama: fallbackName, identitas: fallbackName, selectedTopic: "", topicStatus: "NONE", selectedPA: "" };
                 }
                 loginAsRole('user');
+                initFirestoreRealtimeSync();
               }
-              initFirestoreRealtimeSync();
             } else {
               logout();
             }
           });
         }
       }, 500);
+      feather.replace();
     });
 
     async function handleLoginSubmit(e) {
@@ -896,7 +906,15 @@
       if (window.firebaseAuth) await window.fbSignOut(window.firebaseAuth);
       currentUser = null;
       document.getElementById('view-app').classList.add('hidden');
-      document.getElementById('view-landing').classList.remove('hidden');
+      
+      // Arahkan ke layar yang tepat berdasarkan sakelar
+      if (IS_UNDER_MAINTENANCE) {
+        document.getElementById('view-landing').classList.add('hidden');
+        document.getElementById('view-maintenance').classList.remove('hidden');
+      } else {
+        document.getElementById('view-maintenance').classList.add('hidden');
+        document.getElementById('view-landing').classList.remove('hidden');
+      }
     }
 
     function initFirestoreRealtimeSync() {
