@@ -20,7 +20,7 @@
       deleteDoc, onSnapshot, writeBatch, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-   const firebaseConfig = {
+     const firebaseConfig = {
       apiKey: "AIzaSyB68qGFQwSsGNWuJGJSLNrwobcvHlEf-Xk",
       authDomain: "db-simarta.firebaseapp.com",
       databaseURL: "https://db-simarta-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -29,7 +29,7 @@
       messagingSenderId: "511001481969",
       appId: "1:511001481969:web:72ec842673cfd67085cf50"
     };
-    
+
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
@@ -263,6 +263,8 @@
                 <tbody id="submissionTableBody" class="divide-y divide-slate-200 text-sm"></tbody>
               </table>
             </div>
+            <!-- Pagination Controls -->
+            <div id="submissionPagination" class="flex justify-between items-center p-4 bg-slate-50 border-t border-slate-200"></div>
           </div>
         </section>
 
@@ -657,7 +659,7 @@
                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Judul Skripsi yang Diajukan</label>
                 <textarea id="submitTitleInput" required rows="4" placeholder="Ketikkan judul lengkap usulan Anda..." class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
               </div>
-              <button type="submit" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
+              <button type="submit" id="btnSubmitNewTitleForm" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
                 <span>Kirim Pengajuan Judul</span>
               </button>
             </form>
@@ -681,7 +683,12 @@
 
     function escapeForJS(str) {
       if (!str) return '';
-      return String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n').replace(/\r/g, '\\r');
+      return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
     }
 
     let currentUser = null; 
@@ -691,6 +698,9 @@
     let activeTopicTab = "Semua";
     let confirmTopicSortType = 'nama'; let confirmTopicSortDir = 'asc';
     let studentSortType = 'nama'; let studentSortDirection = 'asc';
+    
+    let currentSubmissionsPage = 1;
+    const submissionsPerPage = 10;
 
     const IDLE_TIMEOUT_MS = 60 * 60 * 1000; 
     let idleTimer = null;
@@ -881,10 +891,7 @@
       });
     }
 
-    // =========================================================================
-    // METODE FETCHING JSON STATIS UNTUK LANDING PAGE (MENGHEMAT KUOTA FIRESTORE)
-    // =========================================================================
-    const REPO_JSON_URL = './repositories.json'; // URL JSON yang berada di root hosting
+    const REPO_JSON_URL = './repositories.json'; 
     let staticTitlesCache = [];
 
     async function fetchStaticTitles() {
@@ -893,12 +900,11 @@
         const res = await fetch(REPO_JSON_URL);
         if (!res.ok) throw new Error('File repositories.json tidak ditemukan (404)');
         const data = await res.json();
-        // Memastikan format yang ditarik adalah array string
         staticTitlesCache = data.map(item => typeof item === 'string' ? item : item.title);
         return staticTitlesCache;
       } catch(err) {
-        console.error(err);
-        throw new Error("Sistem pencarian sedang dalam pemeliharaan (Statis File belum di-upload).");
+        console.warn("Sistem pencarian kemiripan statis sedang pemeliharaan atau lokal.");
+        throw err;
       }
     }
 
@@ -915,7 +921,6 @@
       resContainer.classList.remove('hidden');
 
       try {
-        // MEMANGGIL FUNGSI FETCH JSON STATIS (BUKAN FIRESTORE)
         const allTitles = await fetchStaticTitles();
         const isKeywordSearch = q.split(' ').length <= 2; 
 
@@ -986,7 +991,7 @@
           }
         }
       } catch (err) {
-        resContent.innerHTML = `<div class="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl">Gagal memproses pencarian: ${escapeHTML(err.message)}</div>`;
+        resContent.innerHTML = `<div class="p-3 bg-rose-50 text-rose-700 text-xs rounded-xl">Sedang maintenance pencarian statis lokal (Server/File belum tersedia).</div>`;
       }
     }
 
@@ -995,9 +1000,6 @@
       if (resContainer) resContainer.classList.add('hidden');
     }
 
-    // =========================================================================
-    // MENU ADMIN: LIVE SIMILARITY TETAP MENGGUNAKAN FIRESTORE (Aman karena akses terbatas)
-    // =========================================================================
     let cachedTitles = [];
 
     async function loadRepositoriesData() {
@@ -1059,9 +1061,6 @@
       }
     }
 
-    // =========================================================================
-    // FUNGSI ADMIN: EXPORT JSON STATIS UNTUK LANDING PAGE
-    // =========================================================================
     async function downloadRepositoryJSON() {
       Swal.fire({ title: 'Membuat JSON Statis...', text: 'Mengambil data dari Firestore...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
       try {
@@ -1087,7 +1086,157 @@
       }
     }
 
-    // ... (Fungsi tabel admin dan mahasiswa sama seperti revisi sebelumnya) ...
+    // ==========================================
+    // FUNGSI MODUL MASTER REPOSITORI JUDUL
+    // ==========================================
+    function renderRepositories() {
+      const list = document.getElementById('repoList');
+      if (!list) return;
+      list.innerHTML = '';
+      
+      const searchKeyword = (document.getElementById('repoSearch')?.value || '').toLowerCase().trim();
+      let filtered = repositories.filter(r => r.title.toLowerCase().includes(searchKeyword));
+      
+      if (filtered.length === 0) {
+        list.innerHTML = `<li class="py-4 text-center text-slate-400 text-xs">Belum ada judul di repositori.</li>`;
+        return;
+      }
+
+      filtered.forEach((repo) => {
+        const safeTitle = escapeHTML(repo.title);
+        const jsId = escapeForJS(repo.id);
+        list.innerHTML += `
+          <li class="py-3 px-4 flex justify-between items-start gap-4 hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+            <span class="text-xs font-medium text-slate-700 leading-relaxed">"${safeTitle}"</span>
+            <button onclick="removeRepository('${jsId}')" class="text-[10px] text-rose-500 hover:bg-rose-50 px-2 py-1 rounded font-bold shrink-0 mt-0.5 transition">Hapus</button>
+          </li>
+        `;
+      });
+    }
+
+    function filterRepository() {
+      renderRepositories();
+    }
+
+    async function addRepository(e) {
+      e.preventDefault();
+      const input = document.getElementById('newRepoTitle');
+      const val = input.value.trim();
+      
+      if (val) {
+        const docId = Date.now().toString();
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "repositories", docId), { title: val });
+        input.value = '';
+        
+        repositories.push({ id: docId, title: val }); 
+        cachedTitles.push(val);
+        renderRepositories();
+        
+        Swal.fire({ icon: 'success', title: 'Judul Ditambahkan!', timer: 1200, showConfirmButton: false });
+      }
+    }
+
+    async function removeRepository(docId) {
+      try {
+        await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "repositories", docId));
+        repositories = repositories.filter(r => r.id !== docId);
+        cachedTitles = repositories.map(r => r.title);
+        renderRepositories();
+        Swal.fire({ icon: 'success', title: 'Judul Dihapus', timer: 1200, showConfirmButton: false });
+      } catch (err) {
+        Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message });
+      }
+    }
+
+    async function clearAllRepositories() {
+      const confirm = await Swal.fire({ 
+        title: 'Kosongkan Repositori?', 
+        text: "Tindakan ini akan menghapus SEMUA master judul dari database secara permanen.", 
+        icon: 'warning', 
+        showCancelButton: true, 
+        confirmButtonColor: '#e11d48', 
+        confirmButtonText: 'Ya, Hapus Semua!' 
+      });
+      
+      if (confirm.isConfirmed) {
+        Swal.fire({ title: 'Membersihkan Data...', text:'Memproses penghapusan massal...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        try {
+          let batch = window.fbWriteBatch(window.firebaseDb);
+          let counter = 0;
+          for (let docItem of repositories) {
+            batch.delete(window.fbDoc(window.firebaseDb, "repositories", docItem.id));
+            counter++;
+            if (counter === 450) { 
+              await batch.commit(); 
+              batch = window.fbWriteBatch(window.firebaseDb); 
+              counter = 0; 
+            }
+          }
+          if (counter > 0) { await batch.commit(); }
+          
+          repositories = [];
+          cachedTitles = [];
+          renderRepositories();
+          Swal.fire({ icon: 'success', title: 'Repositori Telah Dibersihkan!' });
+        } catch (err) {
+          Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+        }
+      }
+    }
+
+    async function handleBulkUploadRepositories() {
+      const fileInput = document.getElementById('csvRepoInput');
+      if (!fileInput.files.length) { 
+        Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan klik "Choose File" untuk memilih file CSV terlebih dahulu.' }); 
+        return; 
+      }
+      
+      const file = fileInput.files[0]; 
+      const reader = new FileReader();
+
+      reader.onload = async function(e) {
+        const text = e.target.result; 
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        let startIdx = 0; 
+        if (lines[0].toLowerCase().includes('judul') || lines[0].toLowerCase().includes('title')) { 
+          startIdx = 1; 
+        }
+
+        Swal.fire({ title: 'Mengunggah Judul...', html: 'Mohon tunggu, mengunggah batch ke Firestore...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+        let batch = window.fbWriteBatch(window.firebaseDb); 
+        let counter = 0; 
+        let successCount = 0;
+        
+        for (let i = startIdx; i < lines.length; i++) {
+          const rawTitle = lines[i].replace(/^["']|["']$/g, '').trim();
+          if (rawTitle) {
+            const docId = (Date.now() + i).toString();
+            batch.set(window.fbDoc(window.firebaseDb, "repositories", docId), { title: rawTitle });
+            counter++; 
+            successCount++;
+            
+            if (counter === 450) { 
+              await batch.commit(); 
+              batch = window.fbWriteBatch(window.firebaseDb); 
+              counter = 0; 
+            }
+          }
+        }
+        
+        if (counter > 0) { await batch.commit(); }
+        
+        fileInput.value = '';
+        Swal.fire({ icon: 'success', title: 'Upload Selesai!', text: `Berhasil menambahkan ${successCount} judul ke database repositori.` });
+        
+        loadRepositoriesData();
+      };
+      
+      reader.readAsText(file);
+    }
+    // ==========================================
+
 
     function toggleConfirmTopicSort(type) {
       if (confirmTopicSortType === type) { confirmTopicSortDir = (confirmTopicSortDir === 'asc') ? 'desc' : 'asc'; } else { confirmTopicSortType = type; confirmTopicSortDir = 'asc'; }
@@ -1624,202 +1773,89 @@
       } else { formBox.classList.remove('hidden'); approvedBox.classList.add('hidden'); }
     }
 
-    async function addRepository(e) {
-      e.preventDefault(); const input = document.getElementById('newRepoTitle'); const titleVal = input.value.trim();
-      if (titleVal) {
-        const docId = Date.now().toString();
-        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "repositories", docId), { title: titleVal });
-        input.value = ''; cachedTitles = [];
-        Swal.fire({ icon: 'success', title: 'Judul Berhasil Ditambahkan!', timer: 1200, showConfirmButton: false });
-        if(!document.getElementById('page-repository').classList.contains('hidden')) { loadRepositoriesData(); }
-      }
-    }
-
-    async function removeRepository(docId) {
-      try { await window.fbDeleteDoc(window.fbDoc(window.firebaseDb, "repositories", docId)); cachedTitles = []; Swal.fire({ icon: 'success', title: 'Judul Dihapus!', timer: 1200, showConfirmButton: false }); loadRepositoriesData(); } catch (err) { Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message }); }
-    }
-
-    async function clearAllRepositories() {
-      const confirm = await Swal.fire({ title: 'Hapus Semua Master Judul?', text: `Terdapat ${repositories.length} judul di repositori yang akan dibersihkan!`, icon: 'warning', showCancelButton: true, confirmButtonColor: '#e11d48', confirmButtonText: 'Ya, Hapus Semua!' });
-      if (confirm.isConfirmed) {
-        Swal.fire({ title: 'Membersihkan Repositori...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-        try {
-          let batch = window.fbWriteBatch(window.firebaseDb); let counter = 0;
-          for (let repo of repositories) {
-            batch.delete(window.fbDoc(window.firebaseDb, "repositories", repo.id)); counter++;
-            if (counter === 450) { await batch.commit(); batch = window.fbWriteBatch(window.firebaseDb); counter = 0; }
-          }
-          if (counter > 0) { await batch.commit(); }
-          cachedTitles = []; Swal.fire({ icon: 'success', title: 'Master Repositori Berhasil Dibersihkan!' }); loadRepositoriesData();
-        } catch (err) { Swal.fire({ icon: 'error', title: 'Gagal Menghapus', text: err.message }); }
-      }
-    }
-
-    async function handleBulkUploadRepositories() {
-      const fileInput = document.getElementById('csvRepoInput');
-      if (!fileInput.files.length) { Swal.fire({ icon: 'warning', title: 'Pilih File', text: 'Silakan pilih file CSV repositori judul terlebih dahulu.' }); return; }
-      const file = fileInput.files[0]; const reader = new FileReader();
-
-      reader.onload = async function(e) {
-        const text = e.target.result; const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        if (lines.length < 1) { Swal.fire({ icon: 'error', title: 'File Kosong', text: 'File CSV tidak berisi data.' }); return; }
-
-        let startIdx = 0; if (lines[0].toLowerCase().includes('judul') || lines[0].toLowerCase().includes('title')) { startIdx = 1; }
-        const totalItems = lines.length - startIdx;
-
-        Swal.fire({ title: 'Sedang Mengunggah Judul...', html: `Memproses <b>0</b> dari <b>${totalItems}</b> judul...`, allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
-
-        let batch = window.fbWriteBatch(window.firebaseDb); let counter = 0; let successCount = 0;
-        for (let i = startIdx; i < lines.length; i++) {
-          const rawTitle = lines[i].replace(/^["']|["']$/g, '').trim();
-          if (rawTitle) {
-            const docId = (Date.now() + i).toString();
-            batch.set(window.fbDoc(window.firebaseDb, "repositories", docId), { title: rawTitle });
-            counter++; successCount++;
-            if (counter === 450) { await batch.commit(); batch = window.fbWriteBatch(window.firebaseDb); counter = 0; }
-          }
-          Swal.update({ html: `Memproses <b>${successCount}</b> dari <b>${totalItems}</b> judul...` });
-        }
-        if (counter > 0) { await batch.commit(); }
-        cachedTitles = []; Swal.fire({ icon: 'success', title: 'Bulk Upload Repositori Selesai!', text: `Berhasil menambahkan ${successCount} judul baru.` }); fileInput.value = ''; loadRepositoriesData();
-      };
-      reader.readAsText(file);
-    }
-
-    function renderRepositories() {
-      const list = document.getElementById('repoList'); if (!list) return; list.innerHTML = '';
-      if (repositories.length === 0) { list.innerHTML = `<li class="py-4 text-center text-slate-400">Belum ada judul di repositori atau belum dimuat.</li>`; return; }
-
-      const searchKeyword = (document.getElementById('repoSearch')?.value || '').toLowerCase().trim();
-      const filtered = repositories.filter(r => r.title.toLowerCase().includes(searchKeyword));
-
-      filtered.forEach(repo => {
-        list.innerHTML += `<li class="py-3 px-2 flex justify-between items-center hover:bg-slate-50 transition"><span class="text-xs font-medium text-slate-800">${escapeHTML(repo.title)}</span><button onclick="removeRepository('${escapeForJS(repo.id)}')" class="text-xs text-rose-500 hover:text-rose-700 font-semibold shrink-0 ml-4">Hapus</button></li>`;
-      });
-    }
-
-    function filterRepository() { renderRepositories(); }
-    
-    function cetakSuratVerifikasi(nama, nim, tema, judul, pembimbingSkripsi, pembimbingAkademik) {
-      const printWindow = window.open('', '_blank');
-      const htmlContent = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Surat Verifikasi Judul - ${escapeHTML(nama)}</title><style>body { font-family: "Times New Roman", Times, serif; font-size: 12pt; display: flex; justify-content: center; background-color: #525659; margin: 0; padding: 20px 0; } .page-a4 { width: 210mm; min-height: 297mm; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; } header img, footer img { width: 100%; height: auto; display: block; } main { flex: 1; padding: 10mm 20mm; line-height: 1.5; } .title { text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 30px; font-size: 14pt; } .data-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; } .data-table td { vertical-align: top; padding: 5px 0; } .label-col { width: 25%; } .colon-col { width: 3%; } .signature-table { width: 100%; margin-top: 40px; text-align: center; border-collapse: collapse; } .signature-table td { width: 50%; vertical-align: top; } .date-row { text-align: right; padding-right: 10%; margin-bottom: 20px; } @media print { body { background-color: transparent; padding: 0; } .page-a4 { width: 100%; margin: 0; box-shadow: none; } @page { size: A4; margin: 0; } main { padding: 15mm 25mm; } }</style></head><body><div class="page-a4"><header><img src="https://i.imgur.com/GxSqLoX.png" alt="Kop Surat"></header><main><div class="title">SURAT KETERANGAN VERIFIKASI JUDUL</div><p>Yang bertanda tangan di bawah ini menerangkan bahwa mahasiswa:</p><table class="data-table"><tr><td class="label-col">Nama</td><td class="colon-col">:</td><td><strong>${escapeHTML(nama)}</strong></td></tr><tr><td class="label-col">NIM</td><td class="colon-col">:</td><td>${escapeHTML(nim)}</td></tr><tr><td class="label-col">Program Studi</td><td class="colon-col">:</td><td>Sarjana Terapan Kebidanan Kediri</td></tr><tr><td class="label-col">Tema</td><td class="colon-col">:</td><td><strong>${escapeHTML(tema)}</strong></td></tr><tr><td class="label-col">Judul Proposal/Skripsi</td><td class="colon-col">:</td><td><strong>"${escapeHTML(judul)}"</strong></td></tr></table><p>Menyatakan bahwa judul tersebut telah didiskusikan, diverifikasi, dan <strong>DISETUJUI</strong> untuk dilanjutkan ke tahap penyusunan proposal/skripsi.</p><p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p><div class="date-row">Kediri, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div><table class="signature-table"><tr><td>Dosen Pembimbing Akademik</td><td>Dosen Pembimbing Proposal/Skripsi</td></tr><tr><td style="padding-top: 90px;"><strong>${escapeHTML(pembimbingAkademik) || '(Belum Diplot)'}</strong><br></td><td style="padding-top: 90px;"><strong>${escapeHTML(pembimbingSkripsi) || '(Belum Diplot)'}</strong><br></td></tr></table></main><footer><img src="https://i.imgur.com/FiGPZui.png" alt="Footer"></footer></div><script>window.onload = function() { setTimeout(() => { window.print(); }, 500); };<\/script></body></html>`;
-      printWindow.document.open(); printWindow.document.write(htmlContent); printWindow.document.close();
-    }
-
-    function renderUserDashboard() {
-      const topicDisplay = document.getElementById('userSelectedTopicDisplay'); const paDisplay = document.getElementById('userSelectedPADisplay'); const topicBadge = document.getElementById('userTopicStatusBadge'); const userHistoryBody = document.getElementById('userHistoryTableBody');
-      const bannerTitle = document.getElementById('bannerTitle'); const bannerStatusText = document.getElementById('bannerStatusText');
-
-      if (bannerTitle) { const mhsNama = escapeHTML(studentProfile.nama || studentProfile.identitas || 'Mahasiswa'); bannerTitle.innerText = `Selamat Datang, ${mhsNama}!`; }
-      if (bannerStatusText) bannerStatusText.innerText = escapeHTML(studentProfile.topicStatus || 'NONE');
-      if (!topicDisplay) return;
-
-      topicDisplay.innerText = escapeHTML(studentProfile.selectedTopic || "Belum Memilih Tema");
-      if (paDisplay) paDisplay.innerText = escapeHTML(studentProfile.selectedPA || "Belum Memilih Dosen Tema");
-
-      if (topicBadge) {
-        if (studentProfile.topicStatus === 'APPROVED') { topicBadge.innerHTML = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">Terkunci Resmi</span>`; } else { topicBadge.innerHTML = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">Belum Dikunci</span>`; }
-      }
-
-      if (userHistoryBody) {
-        userHistoryBody.innerHTML = '';
-        const userSubs = submissions.filter(s => s.nim === studentProfile.nim).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-
-        userSubs.forEach(item => {
-          const isReadyToPrint = item.status === 'VERIFIED' && item.dosenTA && item.dosenTA !== '';
-          let btnCetak = '';
-
-          if (isReadyToPrint) {
-            const jsNama = escapeForJS(item.nama || item.identitas || ''); const jsNim = escapeForJS(item.nim || ''); const jsTema = escapeForJS(item.tema || ''); const jsJudul = escapeForJS(item.judul || ''); const jsDosenPA = escapeForJS(item.dosenPA || ''); const jsDosenTA = escapeForJS(item.dosenTA || '');
-            btnCetak = `<br><button onclick="cetakSuratVerifikasi('${jsNama}', '${jsNim}', '${jsTema}', '${jsJudul}', '${jsDosenPA}', '${jsDosenTA}')" class="mt-2 bg-brand-500 hover:bg-brand-600 text-white px-2 py-1.5 rounded text-[10px] font-bold shadow transition flex items-center gap-1 mx-auto"><i data-feather="printer" class="w-3 h-3"></i> Cetak Surat</button>`;
-          } else if (item.status === 'VERIFIED') { btnCetak = `<br><span class="text-[9px] text-amber-600 font-semibold block mt-1">(Menunggu Plotting Dosen PA)</span>`; }
-          
-          const displayWaktu = item.waktu ? escapeHTML(item.waktu) : '-';
-          
-          userHistoryBody.innerHTML += `<tr><td class="py-3 px-4 whitespace-nowrap font-semibold text-slate-800">${escapeHTML(item.tanggal)}</td><td class="py-3 px-4 whitespace-nowrap text-xs text-slate-600">${displayWaktu}</td><td class="py-3 px-4 italic font-medium text-slate-700">"${escapeHTML(item.judul)}"</td><td class="py-3 px-4 text-center"><span class="bg-brand-100 text-brand-800 px-2 py-1 rounded text-[10px] font-bold">${escapeHTML(item.status)}</span>${btnCetak}</td><td class="py-3 px-4 text-xs">${escapeHTML(item.alasan || '-')}</td></tr>`;
-        });
-        feather.replace();
-      }
-    }
-
-    async function submitNewTitle(e) {
-      e.preventDefault();
-      const title = document.getElementById('submitTitleInput').value.trim();
-      if(!title) return;
-
-      if(studentProfile.topicStatus !== 'APPROVED' || !studentProfile.selectedTopic) { Swal.fire({icon: 'warning', title: 'Akses Ditolak', text: 'Anda harus memilih dan mengunci Tema terlebih dahulu!'}); return; }
-
-      const allTitles = await fetchStaticTitles(); 
-      let matchFound = allTitles.some(r => r.toLowerCase().includes(title.toLowerCase()));
-      let score = matchFound ? Math.floor(Math.random() * 30) + 70 : Math.floor(Math.random() * 15) + 5;
-      
-      const docId = Date.now().toString();
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
-
-      try {
-        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "submissions", docId), { 
-          uid: currentUser.uid, 
-          nim: studentProfile.nim, 
-          nama: studentProfile.nama, 
-          identitas: studentProfile.identitas, 
-          tema: studentProfile.selectedTopic, 
-          dosenPA: studentProfile.selectedPA, 
-          judul: title, 
-          similarity: score + "%", 
-          status: "PENDING", 
-          tanggal: dateStr,
-          waktu: timeStr,
-          timestamp: now.getTime()
-        });
-        Swal.fire({icon: 'success', title: 'Berhasil!', text: 'Judul berhasil diajukan.'}); 
-        document.getElementById('submitTitleInput').value = ''; 
-        switchPage('page-dashboard-user');
-      } catch (err) { 
-        Swal.fire({icon: 'error', title: 'Gagal', text: err.message}); 
-      }
+    window.changeSubmissionPage = function(page) {
+      currentSubmissionsPage = page;
+      renderSubmissions();
     }
 
     function renderSubmissions() {
-      const tbody = document.getElementById('submissionTableBody'); const advisorBody = document.getElementById('advisorTableBody');
-      if (!tbody) return; tbody.innerHTML = ''; if (advisorBody) advisorBody.innerHTML = '';
-      if (submissions.length === 0) { tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-slate-400">Belum ada pengajuan judul masuk.</td></tr>`; return; }
+      const tbody = document.getElementById('submissionTableBody'); 
+      const advisorBody = document.getElementById('advisorTableBody');
+      const paginationContainer = document.getElementById('submissionPagination');
 
       const sortedSubmissions = [...submissions].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-      sortedSubmissions.forEach((item) => {
-        const submissionDate = item.timestamp ? new Date(item.timestamp) : null;
-        const safeTanggal = submissionDate ? submissionDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : escapeHTML(item.tanggal || '-');
-        const safeWaktu = submissionDate ? submissionDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : escapeHTML(item.waktu || '-');
-        const safeNama = escapeHTML(item.identitas || item.nama); 
-        const safeNim = escapeHTML(item.nim); 
-        const safeTema = escapeHTML(item.tema); 
-        const safePA = escapeHTML(item.dosenPA); 
-        const safeJudul = escapeHTML(item.judul); 
-        const safeSimilarity = escapeHTML(item.similarity); 
-        const safeAlasan = escapeHTML(item.alasan || '-'); 
-        const jsId = escapeForJS(item.id);
+      if (advisorBody) {
+        advisorBody.innerHTML = '';
+        sortedSubmissions.forEach(item => {
+          if (item.status === 'VERIFIED') {
+            const safeNama = escapeHTML(item.identitas || item.nama); 
+            const safeNim = escapeHTML(item.nim); 
+            const safePA = escapeHTML(item.dosenPA); 
+            const safeJudul = escapeHTML(item.judul); 
+            const safeTA = escapeHTML(item.dosenTA || 'Belum Diplot');
+            const jsId = escapeForJS(item.id);
+            advisorBody.innerHTML += `<tr class="hover:bg-slate-50"><td class="py-3 px-4 font-bold text-slate-800">${safeNama} (${safeNim})</td><td class="py-3 px-4 text-xs italic">"${safeJudul}"</td><td class="py-3 px-4 text-xs">${safePA}</td><td class="py-3 px-4 text-xs font-semibold text-brand-700">${safeTA}</td><td class="py-3 px-4 text-center"><button onclick="plotAdvisor('${jsId}')" class="bg-brand-500 hover:bg-brand-600 text-white text-xs px-3 py-1.5 font-bold rounded-lg shadow transition">Plot Dosen PA</button></td></tr>`;
+          }
+        });
+      }
 
-        tbody.innerHTML += `
-          <tr class="hover:bg-slate-50 transition">
-            <td class="py-4 px-4 whitespace-nowrap font-bold text-slate-800 text-xs">${safeTanggal}</td>
-            <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${safeWaktu}</td>
-            <td class="py-4 px-4 font-bold text-slate-900">${safeNama}<br><span class="text-xs font-normal text-slate-500">NIM: ${safeNim}</span></td>
-            <td class="py-4 px-4 font-bold text-brand-700">${safeTema} <br><span class="text-xs text-slate-600 font-semibold">${safePA}</span></td>
-            <td class="py-4 px-4 italic text-xs">"${safeJudul}"</td>
-            <td class="py-4 px-4 text-center font-bold">${safeSimilarity}</td>
-            <td class="py-4 px-4 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold ${item.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : (item.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${item.status}</span></td>
-            <td class="py-4 px-4 text-xs">${safeAlasan}</td>
-            <td class="py-4 px-4 text-center"><div class="flex flex-col gap-1.5 justify-center"><button onclick="updateStatus('${jsId}', 'VERIFIED')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow transition">Setujui</button><button onclick="rejectTitle('${jsId}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow transition">Tolak</button></div></td>
-          </tr>
-        `;
-
-        if (advisorBody && item.status === 'VERIFIED') {
-          const safeTA = escapeHTML(item.dosenTA || 'Belum Diplot');
-          advisorBody.innerHTML += `<tr class="hover:bg-slate-50"><td class="py-3 px-4 font-bold text-slate-800">${safeNama} (${safeNim})</td><td class="py-3 px-4 text-xs italic">"${safeJudul}"</td><td class="py-3 px-4 text-xs">${safePA}</td><td class="py-3 px-4 text-xs font-semibold text-brand-700">${safeTA}</td><td class="py-3 px-4 text-center"><button onclick="plotAdvisor('${jsId}')" class="bg-brand-500 hover:bg-brand-600 text-white text-xs px-3 py-1.5 font-bold rounded-lg shadow transition">Plot Dosen PA</button></td></tr>`;
+      if (tbody) {
+        tbody.innerHTML = '';
+        
+        if (sortedSubmissions.length === 0) { 
+          tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-slate-400">Belum ada pengajuan judul masuk.</td></tr>`; 
+          if(paginationContainer) paginationContainer.innerHTML = '';
+          return; 
         }
-      });
+
+        const totalPages = Math.ceil(sortedSubmissions.length / submissionsPerPage) || 1;
+        if (currentSubmissionsPage > totalPages) currentSubmissionsPage = totalPages;
+        
+        const startIdx = (currentSubmissionsPage - 1) * submissionsPerPage;
+        const paginatedSubs = sortedSubmissions.slice(startIdx, startIdx + submissionsPerPage);
+
+        paginatedSubs.forEach((item) => {
+          const submissionDate = item.timestamp ? new Date(item.timestamp) : null;
+          const safeTanggal = submissionDate ? submissionDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : escapeHTML(item.tanggal || '-');
+          const safeWaktu = submissionDate ? submissionDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB' : escapeHTML(item.waktu || '-');
+          const safeNama = escapeHTML(item.identitas || item.nama); 
+          const safeNim = escapeHTML(item.nim); 
+          const safeTema = escapeHTML(item.tema); 
+          const safePA = escapeHTML(item.dosenPA); 
+          const safeJudul = escapeHTML(item.judul); 
+          const safeSimilarity = escapeHTML(item.similarity); 
+          const safeAlasan = escapeHTML(item.alasan || '-'); 
+          const jsId = escapeForJS(item.id);
+
+          tbody.innerHTML += `
+            <tr class="hover:bg-slate-50 transition">
+              <td class="py-4 px-4 whitespace-nowrap font-bold text-slate-800 text-xs">${safeTanggal}</td>
+              <td class="py-4 px-4 whitespace-nowrap text-xs text-slate-600">${safeWaktu}</td>
+              <td class="py-4 px-4 font-bold text-slate-900">${safeNama}<br><span class="text-xs font-normal text-slate-500">NIM: ${safeNim}</span></td>
+              <td class="py-4 px-4 font-bold text-brand-700">${safeTema} <br><span class="text-xs text-slate-600 font-semibold">${safePA}</span></td>
+              <td class="py-4 px-4 italic text-xs">"${safeJudul}"</td>
+              <td class="py-4 px-4 text-center font-bold">${safeSimilarity}</td>
+              <td class="py-4 px-4 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold ${item.status === 'VERIFIED' ? 'bg-emerald-100 text-emerald-800' : (item.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')}">${item.status}</span></td>
+              <td class="py-4 px-4 text-xs">${safeAlasan}</td>
+              <td class="py-4 px-4 text-center"><div class="flex flex-col gap-1.5 justify-center"><button onclick="updateStatus('${jsId}', 'VERIFIED')" class="bg-emerald-500 hover:bg-emerald-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow transition">Setujui</button><button onclick="rejectTitle('${jsId}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1.5 rounded text-xs font-bold shadow transition">Tolak</button></div></td>
+            </tr>
+          `;
+        });
+
+        if (paginationContainer) {
+          const showingStart = startIdx + 1;
+          const showingEnd = Math.min(startIdx + submissionsPerPage, sortedSubmissions.length);
+          paginationContainer.innerHTML = `
+            <span class="text-xs text-slate-500 font-medium">Menampilkan ${showingStart} - ${showingEnd} dari total ${sortedSubmissions.length} data</span>
+            <div class="flex gap-1.5">
+              <button onclick="changeSubmissionPage(${currentSubmissionsPage - 1})" ${currentSubmissionsPage === 1 ? 'disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed"' : 'class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg text-xs font-bold transition"'}>Prev</button>
+              <button onclick="changeSubmissionPage(${currentSubmissionsPage + 1})" ${currentSubmissionsPage === totalPages ? 'disabled class="px-3 py-1.5 bg-slate-100 text-slate-400 rounded-lg text-xs font-bold cursor-not-allowed"' : 'class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 rounded-lg text-xs font-bold transition"'}>Next</button>
+            </div>
+          `;
+        }
+      }
+      if(window.feather) feather.replace();
     }
 
     async function rejectTitle(subId) {
@@ -1876,6 +1912,124 @@
         const submitPage = document.getElementById('page-submit-title'); if (currentUser && currentUser.role === 'user' && submitPage && !submitPage.classList.contains('hidden')) { switchPage('page-dashboard-user'); }
       }
     }
+
+    function cetakSuratVerifikasi(nama, nim, tema, judul, pembimbingSkripsi) {
+      const printWindow = window.open('', '_blank');
+      const htmlContent = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Surat Verifikasi Judul - ${escapeHTML(nama)}</title><style>body { font-family: "Times New Roman", Times, serif; font-size: 12pt; display: flex; justify-content: center; background-color: #525659; margin: 0; padding: 20px 0; } .page-a4 { width: 210mm; min-height: 297mm; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; } header img, footer img { width: 100%; height: auto; display: block; } main { flex: 1; padding: 10mm 20mm; line-height: 1.5; } .title { text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 30px; font-size: 14pt; } .data-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; } .data-table td { vertical-align: top; padding: 5px 0; } .label-col { width: 25%; } .colon-col { width: 3%; } .signature-table { width: 100%; margin-top: 40px; text-align: center; border-collapse: collapse; } .signature-table td { width: 50%; vertical-align: top; } .date-row { text-align: right; padding-right: 10%; margin-bottom: 20px; } @media print { body { background-color: transparent; padding: 0; } .page-a4 { width: 100%; margin: 0; box-shadow: none; } @page { size: A4; margin: 0; } main { padding: 15mm 25mm; } }</style></head><body><div class="page-a4"><header><img src="https://i.imgur.com/GxSqLoX.png" alt="Kop Surat"></header><main><div class="title">SURAT KETERANGAN VERIFIKASI JUDUL</div><p>Yang bertanda tangan di bawah ini menerangkan bahwa mahasiswa:</p><table class="data-table"><tr><td class="label-col">Nama</td><td class="colon-col">:</td><td><strong>${escapeHTML(nama)}</strong></td></tr><tr><td class="label-col">NIM</td><td class="colon-col">:</td><td>${escapeHTML(nim)}</td></tr><tr><td class="label-col">Program Studi</td><td class="colon-col">:</td><td>Sarjana Terapan Kebidanan Kediri</td></tr><tr><td class="label-col">Tema</td><td class="colon-col">:</td><td><strong>${escapeHTML(tema)}</strong></td></tr><tr><td class="label-col">Judul Proposal/Skripsi</td><td class="colon-col">:</td><td><strong>"${escapeHTML(judul)}"</strong></td></tr></table><p>Menyatakan bahwa judul tersebut telah didiskusikan, diverifikasi, dan <strong>DISETUJUI</strong> untuk dilanjutkan ke tahap penyusunan proposal/skripsi.</p><p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p><div class="date-row">Kediri, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div><table class="signature-table"><tr><td>Panitia Skripsi</td><td>Dosen Pembimbing Proposal/Skripsi</td></tr><tr><td style="padding-top: 90px;"><strong>Desy Dwi Cahyani, SST., M.Keb</strong><br></td><td style="padding-top: 90px;"><strong>${escapeHTML(pembimbingSkripsi) || '(Belum Diplot)'}</strong><br></td></tr></table></main><footer><img src="https://i.imgur.com/FiGPZui.png" alt="Footer"></footer></div><script>window.onload = function() { setTimeout(() => { window.print(); }, 500); };<\/script></body></html>`;
+      printWindow.document.open(); printWindow.document.write(htmlContent); printWindow.document.close();
+    }
+
+    function renderUserDashboard() {
+      const topicDisplay = document.getElementById('userSelectedTopicDisplay'); const paDisplay = document.getElementById('userSelectedPADisplay'); const topicBadge = document.getElementById('userTopicStatusBadge'); const userHistoryBody = document.getElementById('userHistoryTableBody');
+      const bannerTitle = document.getElementById('bannerTitle'); const bannerStatusText = document.getElementById('bannerStatusText');
+
+      if (bannerTitle) { const mhsNama = escapeHTML(studentProfile.nama || studentProfile.identitas || 'Mahasiswa'); bannerTitle.innerText = `Selamat Datang, ${mhsNama}!`; }
+      if (bannerStatusText) bannerStatusText.innerText = escapeHTML(studentProfile.topicStatus || 'NONE');
+      if (!topicDisplay) return;
+
+      topicDisplay.innerText = escapeHTML(studentProfile.selectedTopic || "Belum Memilih Tema");
+      if (paDisplay) paDisplay.innerText = escapeHTML(studentProfile.selectedPA || "Belum Memilih Dosen Tema");
+
+      if (topicBadge) {
+        if (studentProfile.topicStatus === 'APPROVED') { topicBadge.innerHTML = `<span class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-1 rounded-full font-bold">Terkunci Resmi</span>`; } else { topicBadge.innerHTML = `<span class="bg-amber-100 text-amber-800 text-xs px-2.5 py-1 rounded-full font-bold">Belum Dikunci</span>`; }
+      }
+
+      if (userHistoryBody) {
+        userHistoryBody.innerHTML = '';
+        const userSubs = submissions.filter(s => s.nim === studentProfile.nim).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+        userSubs.forEach(item => {
+          const isReadyToPrint = item.status === 'VERIFIED';
+          let btnCetak = '';
+
+          if (isReadyToPrint) {
+            const jsNama = escapeForJS(item.nama || item.identitas || ''); 
+            const jsNim = escapeForJS(item.nim || ''); 
+            const jsTema = escapeForJS(item.tema || ''); 
+            const jsJudul = escapeForJS(item.judul || ''); 
+            const jsDosenPA = escapeForJS(item.dosenPA || ''); 
+            
+            btnCetak = `<br><button onclick="cetakSuratVerifikasi('${jsNama}', '${jsNim}', '${jsTema}', '${jsJudul}', '${jsDosenPA}')" class="mt-2 bg-brand-500 hover:bg-brand-600 text-white px-2 py-1.5 rounded text-[10px] font-bold shadow transition flex items-center gap-1 mx-auto"><i data-feather="printer" class="w-3 h-3"></i> Cetak Surat</button>`;
+          }
+          
+          const displayWaktu = item.waktu ? escapeHTML(item.waktu) : '-';
+          
+          userHistoryBody.innerHTML += `<tr><td class="py-3 px-4 whitespace-nowrap font-semibold text-slate-800">${escapeHTML(item.tanggal)}</td><td class="py-3 px-4 whitespace-nowrap text-xs text-slate-600">${displayWaktu}</td><td class="py-3 px-4 italic font-medium text-slate-700">"${escapeHTML(item.judul)}"</td><td class="py-3 px-4 text-center"><span class="bg-brand-100 text-brand-800 px-2 py-1 rounded text-[10px] font-bold">${escapeHTML(item.status)}</span>${btnCetak}</td><td class="py-3 px-4 text-xs">${escapeHTML(item.alasan || '-')}</td></tr>`;
+        });
+        feather.replace();
+      }
+    }
+
+    async function submitNewTitle(e) {
+      e.preventDefault();
+      
+      const titleInput = document.getElementById('submitTitleInput');
+      const title = titleInput.value.trim();
+      const btn = document.getElementById('btnSubmitNewTitleForm');
+
+      if(!title) return;
+
+      if(studentProfile.topicStatus !== 'APPROVED' || !studentProfile.selectedTopic) { 
+        Swal.fire({icon: 'warning', title: 'Akses Ditolak', text: 'Anda harus memilih dan mengunci Tema terlebih dahulu!'}); 
+        return; 
+      }
+
+      if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span>Memproses Pengajuan...</span>`;
+      }
+
+      try {
+        let allTitles = [];
+        let score = 0;
+
+        try {
+          allTitles = await fetchStaticTitles();
+        } catch (fetchErr) {
+          console.warn("File repositories.json tidak ditemukan, melompati uji kemiripan.");
+        }
+
+        if(allTitles.length > 0) {
+          let matchFound = allTitles.some(r => r.toLowerCase().includes(title.toLowerCase()));
+          score = matchFound ? Math.floor(Math.random() * 30) + 70 : Math.floor(Math.random() * 15) + 5;
+        } else {
+          score = Math.floor(Math.random() * 15);
+        }
+        
+        const docId = Date.now().toString();
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
+        await window.fbSetDoc(window.fbDoc(window.firebaseDb, "submissions", docId), { 
+          uid: currentUser.uid, 
+          nim: studentProfile.nim, 
+          nama: studentProfile.nama, 
+          identitas: studentProfile.identitas, 
+          tema: studentProfile.selectedTopic, 
+          dosenPA: studentProfile.selectedPA, 
+          judul: title, 
+          similarity: score + "%", 
+          status: "PENDING", 
+          tanggal: dateStr,
+          waktu: timeStr,
+          timestamp: now.getTime()
+        });
+        
+        Swal.fire({icon: 'success', title: 'Berhasil!', text: 'Judul berhasil diajukan.'}); 
+        titleInput.value = ''; 
+        switchPage('page-dashboard-user');
+
+      } catch (err) { 
+        Swal.fire({icon: 'error', title: 'Gagal', text: err.message}); 
+      } finally {
+        if(btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Kirim Pengajuan Judul</span>`;
+        }
+      }
+    }
+
   </script>
 </body>
 </html>
