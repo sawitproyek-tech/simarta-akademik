@@ -1913,15 +1913,82 @@
       }
     }
 
+   // 1. FUNGSI CETAK SURAT (DENGAN NAMA PANITIA DI KIRI)
     function cetakSuratVerifikasi(nama, nim, tema, judul, pembimbingSkripsi) {
       const printWindow = window.open('', '_blank');
-      const htmlContent = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><title>Surat Verifikasi Judul - ${escapeHTML(nama)}</title><style>body { font-family: "Times New Roman", Times, serif; font-size: 12pt; display: flex; justify-content: center; background-color: #525659; margin: 0; padding: 20px 0; } .page-a4 { width: 210mm; min-height: 297mm; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; } header img, footer img { width: 100%; height: auto; display: block; } main { flex: 1; padding: 10mm 20mm; line-height: 1.5; } .title { text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 30px; font-size: 14pt; } .data-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; } .data-table td { vertical-align: top; padding: 5px 0; } .label-col { width: 25%; } .colon-col { width: 3%; } .signature-table { width: 100%; margin-top: 40px; text-align: center; border-collapse: collapse; } .signature-table td { width: 50%; vertical-align: top; } .date-row { text-align: right; padding-right: 10%; margin-bottom: 20px; } @media print { body { background-color: transparent; padding: 0; } .page-a4 { width: 100%; margin: 0; box-shadow: none; } @page { size: A4; margin: 0; } main { padding: 15mm 25mm; } }</style></head><body><div class="page-a4"><header><img src="https://i.imgur.com/GxSqLoX.png" alt="Kop Surat"></header><main><div class="title">SURAT KETERANGAN VERIFIKASI JUDUL</div><p>Yang bertanda tangan di bawah ini menerangkan bahwa mahasiswa:</p><table class="data-table"><tr><td class="label-col">Nama</td><td class="colon-col">:</td><td><strong>${escapeHTML(nama)}</strong></td></tr><tr><td class="label-col">NIM</td><td class="colon-col">:</td><td>${escapeHTML(nim)}</td></tr><tr><td class="label-col">Program Studi</td><td class="colon-col">:</td><td>Sarjana Terapan Kebidanan Kediri</td></tr><tr><td class="label-col">Tema</td><td class="colon-col">:</td><td><strong>${escapeHTML(tema)}</strong></td></tr><tr><td class="label-col">Judul Proposal/Skripsi</td><td class="colon-col">:</td><td><strong>"${escapeHTML(judul)}"</strong></td></tr></table><p>Menyatakan bahwa judul tersebut telah didiskusikan, diverifikasi, dan <strong>DISETUJUI</strong> untuk dilanjutkan ke tahap penyusunan proposal/skripsi.</p><p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p><div class="date-row">Kediri, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div><table class="signature-table"><tr><td>Panitia Skripsi</td><td>Dosen Pembimbing Proposal/Skripsi</td></tr><tr><td style="padding-top: 90px;"><strong>Desy Dwi Cahyani, SST., M.Keb</strong><br></td><td style="padding-top: 90px;"><strong>${escapeHTML(pembimbingSkripsi) || '(Belum Diplot)'}</strong><br></td></tr></table></main><footer><img src="https://i.imgur.com/FiGPZui.png" alt="Footer"></footer></div><script>window.onload = function() { setTimeout(() => { window.print(); }, 500); };<\/script></body></html>`;
-      printWindow.document.open(); printWindow.document.write(htmlContent); printWindow.document.close();
+      const htmlContent = `<!DOCTYPE html>
+      <html lang="id">
+      <head>
+        <meta charset="UTF-8">
+        <title>Surat Verifikasi Judul - ${escapeHTML(nama)}</title>
+        <style>
+          body { font-family: "Times New Roman", Times, serif; font-size: 12pt; display: flex; justify-content: center; background-color: #525659; margin: 0; padding: 20px 0; } 
+          .page-a4 { width: 210mm; min-height: 297mm; background-color: white; box-sizing: border-box; display: flex; flex-direction: column; } 
+          header img, footer img { width: 100%; height: auto; display: block; } 
+          main { flex: 1; padding: 10mm 20mm; line-height: 1.5; } 
+          .title { text-align: center; font-weight: bold; text-decoration: underline; margin-bottom: 30px; font-size: 14pt; } 
+          .data-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; } 
+          .data-table td { vertical-align: top; padding: 5px 0; } 
+          .label-col { width: 25%; } 
+          .colon-col { width: 3%; } 
+          .signature-table { width: 100%; margin-top: 40px; text-align: center; border-collapse: collapse; } 
+          .signature-table td { width: 50%; vertical-align: top; } 
+          .date-row { text-align: right; padding-right: 10%; margin-bottom: 20px; } 
+          @media print { 
+            body { background-color: transparent; padding: 0; } 
+            .page-a4 { width: 100%; margin: 0; box-shadow: none; } 
+            @page { size: A4; margin: 0; } 
+            main { padding: 15mm 25mm; } 
+          }
+        </style>
+      </head>
+      <body>
+        <div class="page-a4">
+          <header><img src="https://i.imgur.com/GxSqLoX.png" alt="Kop Surat"></header>
+          <main>
+            <div class="title">SURAT KETERANGAN VERIFIKASI JUDUL</div>
+            <p>Yang bertanda tangan di bawah ini menerangkan bahwa mahasiswa:</p>
+            <table class="data-table">
+              <tr><td class="label-col">Nama</td><td class="colon-col">:</td><td><strong>${escapeHTML(nama)}</strong></td></tr>
+              <tr><td class="label-col">NIM</td><td class="colon-col">:</td><td>${escapeHTML(nim)}</td></tr>
+              <tr><td class="label-col">Program Studi</td><td class="colon-col">:</td><td>Sarjana Terapan Kebidanan Kediri</td></tr>
+              <tr><td class="label-col">Tema</td><td class="colon-col">:</td><td><strong>${escapeHTML(tema)}</strong></td></tr>
+              <tr><td class="label-col">Judul Proposal/Skripsi</td><td class="colon-col">:</td><td><strong>"${escapeHTML(judul)}"</strong></td></tr>
+            </table>
+            <p>Menyatakan bahwa judul tersebut telah didiskusikan, diverifikasi, dan <strong>DISETUJUI</strong> untuk dilanjutkan ke tahap penyusunan proposal/skripsi.</p>
+            <p>Demikian surat keterangan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+            
+            <div class="date-row">Kediri, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            
+            <table class="signature-table">
+              <tr>
+                <td>Panitia Skripsi</td>
+                <td>Dosen Pembimbing Proposal/Skripsi</td>
+              </tr>
+              <tr>
+                <td style="padding-top: 90px;"><strong>Desy Dwi Cahyani, SST., M.Keb</strong><br></td>
+                <td style="padding-top: 90px;"><strong>${escapeHTML(pembimbingSkripsi) || '-'}</strong><br></td>
+              </tr>
+            </table>
+          </main>
+          <footer><img src="https://i.imgur.com/FiGPZui.png" alt="Footer"></footer>
+        </div>
+        <script>window.onload = function() { setTimeout(() => { window.print(); }, 500); };<\/script>
+      </body>
+      </html>`;
+      printWindow.document.open(); 
+      printWindow.document.write(htmlContent); 
+      printWindow.document.close();
     }
 
+    // 2. KEMBALIKAN KE SUMBER DATA AWAL (Pilihan Tema Mahasiswa)
     function renderUserDashboard() {
-      const topicDisplay = document.getElementById('userSelectedTopicDisplay'); const paDisplay = document.getElementById('userSelectedPADisplay'); const topicBadge = document.getElementById('userTopicStatusBadge'); const userHistoryBody = document.getElementById('userHistoryTableBody');
-      const bannerTitle = document.getElementById('bannerTitle'); const bannerStatusText = document.getElementById('bannerStatusText');
+      const topicDisplay = document.getElementById('userSelectedTopicDisplay'); 
+      const paDisplay = document.getElementById('userSelectedPADisplay'); 
+      const topicBadge = document.getElementById('userTopicStatusBadge'); 
+      const userHistoryBody = document.getElementById('userHistoryTableBody');
+      const bannerTitle = document.getElementById('bannerTitle'); 
+      const bannerStatusText = document.getElementById('bannerStatusText');
 
       if (bannerTitle) { const mhsNama = escapeHTML(studentProfile.nama || studentProfile.identitas || 'Mahasiswa'); bannerTitle.innerText = `Selamat Datang, ${mhsNama}!`; }
       if (bannerStatusText) bannerStatusText.innerText = escapeHTML(studentProfile.topicStatus || 'NONE');
@@ -1947,16 +2014,19 @@
             const jsNim = escapeForJS(item.nim || ''); 
             const jsTema = escapeForJS(item.tema || ''); 
             const jsJudul = escapeForJS(item.judul || ''); 
-            const jsDosenPA = escapeForJS(item.dosenPA || ''); 
             
-            btnCetak = `<br><button onclick="cetakSuratVerifikasi('${jsNama}', '${jsNim}', '${jsTema}', '${jsJudul}', '${jsDosenPA}')" class="mt-2 bg-brand-500 hover:bg-brand-600 text-white px-2 py-1.5 rounded text-[10px] font-bold shadow transition flex items-center gap-1 mx-auto"><i data-feather="printer" class="w-3 h-3"></i> Cetak Surat</button>`;
+            // Tarik data dari dosenPA (Dosen Tema yang dipilih mahasiswa di awal)
+            const jsPembimbing = escapeForJS(item.dosenPA || ''); 
+            
+            btnCetak = `<br><button onclick="cetakSuratVerifikasi('${jsNama}', '${jsNim}', '${jsTema}', '${jsJudul}', '${jsPembimbing}')" class="mt-2 bg-brand-500 hover:bg-brand-600 text-white px-2 py-1.5 rounded text-[10px] font-bold shadow transition flex items-center gap-1 mx-auto"><i data-feather="printer" class="w-3 h-3"></i> Cetak Surat</button>`;
           }
           
           const displayWaktu = item.waktu ? escapeHTML(item.waktu) : '-';
           
           userHistoryBody.innerHTML += `<tr><td class="py-3 px-4 whitespace-nowrap font-semibold text-slate-800">${escapeHTML(item.tanggal)}</td><td class="py-3 px-4 whitespace-nowrap text-xs text-slate-600">${displayWaktu}</td><td class="py-3 px-4 italic font-medium text-slate-700">"${escapeHTML(item.judul)}"</td><td class="py-3 px-4 text-center"><span class="bg-brand-100 text-brand-800 px-2 py-1 rounded text-[10px] font-bold">${escapeHTML(item.status)}</span>${btnCetak}</td><td class="py-3 px-4 text-xs">${escapeHTML(item.alasan || '-')}</td></tr>`;
         });
-        feather.replace();
+        
+        if (window.feather) feather.replace();
       }
     }
 
